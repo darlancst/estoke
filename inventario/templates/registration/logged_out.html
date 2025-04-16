@@ -1,0 +1,9 @@
+{% extends "inventario/base.html" %}
+
+{% block title %}Logout{% endblock %}
+
+{% block content %}
+<h2>Logout</h2>
+<p>Você saiu com sucesso.</p>
+<p><a href="{% url 'login' %}">Fazer login novamente</a></p>
+{% endblock %}

@@ -22,6 +22,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('inventario.urls')),
+    path('accounts/', include('django.contrib.auth.urls')), # Adiciona as URLs de autenticação
 ]
 
 # Adicionar configurações para arquivos de mídia em ambiente de desenvolvimento

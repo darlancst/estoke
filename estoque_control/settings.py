@@ -136,3 +136,7 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 # Configuração de mídia para uploads
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Configurações de Autenticação
+LOGIN_REDIRECT_URL = '/'  # Redireciona para o dashboard após login
+LOGOUT_REDIRECT_URL = 'login' # Redireciona para a página de login após logout

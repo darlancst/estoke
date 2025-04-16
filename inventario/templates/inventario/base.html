@@ -168,7 +168,25 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <span class="navbar-text me-2">
+                                Olá, {{ user.username }}
+                            </span>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'logout' %}">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'login' %}?next={{ request.path }}">
+                                <i class="bi bi-box-arrow-in-right"></i> Login
+                            </a>
+                        </li>
+                    {% endif %}
+                    <li class="nav-item d-none d-lg-block"> {# Ocultar em telas menores, já existe no menu lateral móvel #}
                         <a class="nav-link" href="{% url 'inventario:configuracoes' %}">
                             <i class="bi bi-gear-fill"></i> Configurações
                         </a>
