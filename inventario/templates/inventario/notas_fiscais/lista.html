@@ -1,0 +1,125 @@
+{% extends 'inventario/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Notas Fiscais - Controle de Estoque{% endblock %}
+
+{% block header %}Notas Fiscais{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'inventario:lista_vendas' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-circle"></i> Gerar Nova Nota Fiscal
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Filtro de Período -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" action="{% url 'inventario:lista_notas_fiscais' %}" class="row g-3">
+            <div class="col-md-3">
+                {{ periodo_form.periodo|as_crispy_field }}
+            </div>
+            <div class="col-md-3">
+                {{ periodo_form.data_inicio|as_crispy_field }}
+            </div>
+            <div class="col-md-3">
+                {{ periodo_form.data_fim|as_crispy_field }}
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-filter"></i> Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de Notas Fiscais -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Lista de Notas Fiscais</h5>
+        <span class="badge bg-info">Total: {{ notas_fiscais.count }}</span>
+    </div>
+    <div class="card-body">
+        {% if notas_fiscais %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th>Data Emissão</th>
+                            <th>Cliente</th>
+                            <th>Valor Total</th>
+                            <th>Venda</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for nota_fiscal in notas_fiscais %}
+                        <tr>
+                            <td>{{ nota_fiscal.numero }}</td>
+                            <td>{{ nota_fiscal.data_emissao|date:"d/m/Y H:i" }}</td>
+                            <td>{{ nota_fiscal.venda.cliente }}</td>
+                            <td>R$ {{ nota_fiscal.valor_total|floatformat:2 }}</td>
+                            <td>
+                                <a href="{% url 'inventario:detalhe_venda' nota_fiscal.venda.id %}" class="btn btn-sm btn-outline-secondary">
+                                    #{{ nota_fiscal.venda.id }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if nota_fiscal.status == 'EMITIDA' %}
+                                    <span class="badge bg-success">Emitida</span>
+                                {% elif nota_fiscal.status == 'CANCELADA' %}
+                                    <span class="badge bg-danger">Cancelada</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ nota_fiscal.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'inventario:detalhe_nota_fiscal' nota_fiscal.numero %}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Detalhes">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle"></i> Nenhuma nota fiscal registrada no período selecionado.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Mostrar/ocultar campos de data personalizada
+    document.addEventListener('DOMContentLoaded', function() {
+        const periodoSelect = document.getElementById('id_periodo');
+        const dataInicioDiv = document.getElementById('div_id_data_inicio');
+        const dataFimDiv = document.getElementById('div_id_data_fim');
+        
+        function toggleDataFields() {
+            if (periodoSelect.value === 'custom') {
+                dataInicioDiv.style.display = 'block';
+                dataFimDiv.style.display = 'block';
+            } else {
+                dataInicioDiv.style.display = 'none';
+                dataFimDiv.style.display = 'none';
+            }
+        }
+        
+        // Executar ao carregar a página
+        toggleDataFields();
+        
+        // Adicionar listener para mudanças
+        periodoSelect.addEventListener('change', toggleDataFields);
+    });
+</script>
+{% endblock %} 

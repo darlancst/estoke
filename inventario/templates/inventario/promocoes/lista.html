@@ -1,0 +1,76 @@
+{% extends 'inventario/base.html' %}
+
+{% block title %}Promoções - Controle de Estoque{% endblock %}
+
+{% block header %}Promoções{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'inventario:criar_promocao' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-circle"></i> Nova Promoção
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Lista de Promoções</h5>
+        <span class="badge bg-info">Total: {{ promocoes.count }}</span>
+    </div>
+    <div class="card-body">
+        {% if promocoes %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Data Início</th>
+                            <th>Data Fim</th>
+                            <th>Desconto</th>
+                            <th>Produtos</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for promocao in promocoes %}
+                        <tr>
+                            <td>{{ promocao.nome }}</td>
+                            <td>{{ promocao.data_inicio|date:"d/m/Y" }}</td>
+                            <td>{{ promocao.data_fim|date:"d/m/Y" }}</td>
+                            <td>{{ promocao.desconto }}%</td>
+                            <td>
+                                <span class="badge bg-secondary">{{ promocao.produtos.count }}</span>
+                            </td>
+                            <td>
+                                {% if promocao.ativa %}
+                                    <span class="badge bg-success">Ativa</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inativa</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'inventario:detalhe_promocao' promocao.id %}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Detalhes">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:editar_promocao' promocao.id %}" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:excluir_promocao' promocao.id %}" class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Desativar">
+                                        <i class="bi bi-toggle-off"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle"></i> Nenhuma promoção registrada.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

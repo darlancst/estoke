@@ -1,0 +1,47 @@
+{% extends 'inventario/base.html' %}
+
+{% block title %}Confirmar Exclusão - Controle de Estoque{% endblock %}
+
+{% block header %}Confirmar Exclusão de Devolução/Troca{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'inventario:detalhe_devolucao' devolucao.id %}" class="btn btn-sm btn-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar para Detalhes
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-danger text-white">
+        <h5 class="card-title mb-0">Atenção!</h5>
+    </div>
+    <div class="card-body">
+        <p class="fw-bold">Você está prestes a excluir a {{ devolucao.get_tipo_display|lower }} #{{ devolucao.id }}.</p>
+        <p>Esta ação é irreversível. Todos os dados relacionados a esta devolução/troca serão perdidos.</p>
+        
+        <div class="alert alert-warning">
+            <h6>Informações da devolução:</h6>
+            <ul>
+                <li><strong>Venda:</strong> #{{ devolucao.venda.id }} - {{ devolucao.venda.produto.nome }}</li>
+                <li><strong>Cliente:</strong> {{ devolucao.venda.cliente_nome }}</li>
+                <li><strong>Tipo:</strong> {{ devolucao.get_tipo_display }}</li>
+                <li><strong>Quantidade:</strong> {{ devolucao.quantidade }}</li>
+                <li><strong>Status:</strong> {{ devolucao.get_status_display }}</li>
+                <li><strong>Data:</strong> {{ devolucao.data|date:"d/m/Y H:i" }}</li>
+            </ul>
+        </div>
+        
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'inventario:detalhe_devolucao' devolucao.id %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </a>
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Confirmar Exclusão
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

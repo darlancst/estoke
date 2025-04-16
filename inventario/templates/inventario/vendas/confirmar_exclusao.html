@@ -1,0 +1,54 @@
+{% extends 'inventario/base.html' %}
+
+{% block title %}Confirmar Exclusão - Controle de Estoque{% endblock %}
+
+{% block header %}Confirmar Exclusão de Venda{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'inventario:detalhe_venda' venda.id %}" class="btn btn-sm btn-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar para Detalhes
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-danger text-white">
+        <h5 class="card-title mb-0">Atenção!</h5>
+    </div>
+    <div class="card-body">
+        <p class="fw-bold">Você está prestes a excluir a venda #{{ venda.id }}.</p>
+        <p>Esta ação é irreversível. Todos os dados relacionados a esta venda serão perdidos.</p>
+        <p>A quantidade do produto será devolvida ao estoque.</p>
+        
+        {% if devolucoes_associadas %}
+            <div class="alert alert-danger">
+                <h6 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i>Atenção!</h6>
+                <p class="mb-0">Esta venda possui <strong>{{ devolucoes_associadas.count }} devolução/troca</strong> associada(s). Ao excluir esta venda, a(s) devolução/troca(s) também será(ão) excluída(s).</p>
+            </div>
+        {% endif %}
+        
+        <div class="alert alert-info">
+            <h6>Informações da venda:</h6>
+            <ul>
+                <li><strong>Produto:</strong> {{ venda.produto.nome }}</li>
+                <li><strong>Cliente:</strong> {{ venda.cliente_nome }}</li>
+                <li><strong>Quantidade:</strong> {{ venda.quantidade }}</li>
+                <li><strong>Valor Total:</strong> R$ {{ venda.valor_total|floatformat:2 }}</li>
+                <li><strong>Data:</strong> {{ venda.data|date:"d/m/Y H:i" }}</li>
+            </ul>
+        </div>
+        
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'inventario:detalhe_venda' venda.id %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </a>
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Confirmar Exclusão
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

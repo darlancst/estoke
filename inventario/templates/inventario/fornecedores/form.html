@@ -1,0 +1,60 @@
+{% extends 'inventario/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ titulo }} - Controle de Estoque{% endblock %}
+
+{% block header %}{{ titulo }}{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'inventario:lista_fornecedores' %}" class="btn btn-sm btn-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar para Lista
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" class="row g-3">
+                    {% csrf_token %}
+                    
+                    <div class="col-md-12">
+                        {{ form.nome|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.cnpj|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.telefone|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.email|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.contato|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-12">
+                        {{ form.endereco|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-12">
+                        {{ form.observacoes|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-12 d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Salvar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,100 @@
+{% extends 'inventario/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ titulo }} - Controle de Estoque{% endblock %}
+
+{% block header %}{{ titulo }}{% endblock %}
+
+{% block header_buttons %}
+{% if devolucao %}
+<a href="{% url 'inventario:detalhe_devolucao' devolucao.id %}" class="btn btn-sm btn-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar para Detalhes
+</a>
+{% else %}
+<a href="{% url 'inventario:lista_devolucoes' %}" class="btn btn-sm btn-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar para Lista
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" class="row g-3">
+                    {% csrf_token %}
+                    
+                    <div class="col-md-12">
+                        {{ form.venda|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.tipo|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.quantidade|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-12" id="produto_troca_container">
+                        {{ form.produto_troca|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-12">
+                        {{ form.motivo|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-12">
+                        {{ form.status|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-12 d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Salvar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tipoSelect = document.getElementById('id_tipo');
+        const produtoTrocaContainer = document.getElementById('produto_troca_container');
+        
+        // Função para mostrar/esconder o campo de produto de troca
+        function toggleProdutoTroca() {
+            if (tipoSelect.value === 'troca') {
+                produtoTrocaContainer.style.display = 'block';
+            } else {
+                produtoTrocaContainer.style.display = 'none';
+            }
+        }
+        
+        // Executar na inicialização
+        toggleProdutoTroca();
+        
+        // Adicionar listener para mudanças no tipo
+        tipoSelect.addEventListener('change', toggleProdutoTroca);
+        
+        // Tratamento para quando uma venda é selecionada
+        const vendaSelect = document.getElementById('id_venda');
+        const quantidadeInput = document.getElementById('id_quantidade');
+        
+        if (vendaSelect) {
+            vendaSelect.addEventListener('change', function() {
+                if (vendaSelect.value) {
+                    // Aqui você poderia fazer uma chamada AJAX para obter a quantidade da venda
+                    // Por simplicidade, vamos apenas limpar o campo e deixar o usuário preencher
+                    quantidadeInput.value = '';
+                }
+            });
+        }
+    });
+</script>
+{% endblock %} 

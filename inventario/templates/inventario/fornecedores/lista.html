@@ -1,0 +1,68 @@
+{% extends 'inventario/base.html' %}
+
+{% block title %}Fornecedores - Controle de Estoque{% endblock %}
+
+{% block header %}Fornecedores{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'inventario:criar_fornecedor' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-circle"></i> Novo Fornecedor
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Lista de Fornecedores</h5>
+        <span class="badge bg-info">Total: {{ fornecedores.count }}</span>
+    </div>
+    <div class="card-body">
+        {% if fornecedores %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>CNPJ</th>
+                            <th>Telefone</th>
+                            <th>Email</th>
+                            <th>Produtos</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fornecedor in fornecedores %}
+                        <tr>
+                            <td>{{ fornecedor.nome }}</td>
+                            <td>{{ fornecedor.cnpj }}</td>
+                            <td>{{ fornecedor.telefone }}</td>
+                            <td>{{ fornecedor.email }}</td>
+                            <td>
+                                <span class="badge bg-secondary">{{ fornecedor.produtos.count }}</span>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'inventario:detalhe_fornecedor' fornecedor.id %}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Detalhes">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:editar_fornecedor' fornecedor.id %}" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:excluir_fornecedor' fornecedor.id %}" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle"></i> Nenhum fornecedor registrado.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

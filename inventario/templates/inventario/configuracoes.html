@@ -1,0 +1,149 @@
+{% extends 'inventario/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Configurações - Controle de Estoque{% endblock %}
+
+{% block header %}Configurações do Sistema{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="configTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="geral-tab" data-bs-toggle="tab" data-bs-target="#geral" type="button" role="tab" aria-controls="geral" aria-selected="true">
+                            <i class="bi bi-gear"></i> Configurações Gerais
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="backup-tab" data-bs-toggle="tab" data-bs-target="#backup" type="button" role="tab" aria-controls="backup" aria-selected="false">
+                            <i class="bi bi-cloud-arrow-up"></i> Backup e Restauração
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="configTabsContent">
+                    <!-- Abas de Configurações Gerais -->
+                    <div class="tab-pane fade show active" id="geral" role="tabpanel" aria-labelledby="geral-tab">
+                        <form method="post" enctype="multipart/form-data" class="row g-3">
+                            {% csrf_token %}
+                            
+                            <div class="col-md-6">
+                                {{ form.nome_empresa|as_crispy_field }}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.cnpj|as_crispy_field }}
+                            </div>
+                            
+                            <div class="col-12">
+                                {{ form.endereco|as_crispy_field }}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.telefone|as_crispy_field }}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.email|as_crispy_field }}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.limite_estoque_baixo|as_crispy_field }}
+                                <div class="form-text text-muted">
+                                    Este valor é usado para alertar sobre produtos com estoque baixo.
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                {{ form.logo|as_crispy_field }}
+                            </div>
+                            
+                            {% if form.instance.logo %}
+                            <div class="col-12">
+                                <div class="card mb-3">
+                                    <div class="card-header">Logo Atual</div>
+                                    <div class="card-body text-center">
+                                        <img src="{{ form.instance.logo.url }}" alt="Logo" style="max-height: 100px;" class="img-thumbnail">
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="col-12 text-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Salvar Configurações
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Aba de Backup e Restauração -->
+                    <div class="tab-pane fade" id="backup" role="tabpanel" aria-labelledby="backup-tab">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header bg-primary text-white">
+                                        <h5 class="card-title mb-0">
+                                            <i class="bi bi-download"></i> Backup de Dados
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Faça o backup de todos os dados do sistema para um arquivo seguro.</p>
+                                        <p>O backup inclui:</p>
+                                        <ul>
+                                            <li>Produtos e histórico de preços</li>
+                                            <li>Fornecedores</li>
+                                            <li>Vendas e notas fiscais</li>
+                                            <li>Promoções</li>
+                                            <li>Devoluções e trocas</li>
+                                            <li>Configurações do sistema</li>
+                                        </ul>
+                                        <div class="alert alert-info">
+                                            <i class="bi bi-info-circle"></i> Os arquivos de mídia (imagens de produtos, logos, etc.) precisam ser copiados separadamente.
+                                        </div>
+                                    </div>
+                                    <div class="card-footer">
+                                        <button type="button" class="btn btn-primary" disabled>
+                                            <i class="bi bi-download"></i> Gerar Backup
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header bg-warning">
+                                        <h5 class="card-title mb-0">
+                                            <i class="bi bi-upload"></i> Restauração de Dados
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Restaure os dados do sistema a partir de um arquivo de backup.</p>
+                                        <div class="alert alert-warning">
+                                            <h5 class="alert-heading">Atenção!</h5>
+                                            <p>A restauração de dados irá substituir todos os dados atuais do sistema. Esta ação não pode ser desfeita.</p>
+                                            <p class="mb-0">Recomendamos fazer um backup antes de restaurar dados de um arquivo.</p>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="formFile" class="form-label">Selecione o arquivo de backup</label>
+                                            <input class="form-control" type="file" id="formFile" disabled>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer">
+                                        <button type="button" class="btn btn-warning" disabled>
+                                            <i class="bi bi-upload"></i> Restaurar Backup
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,98 @@
+{% extends 'inventario/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ titulo }} - Controle de Estoque{% endblock %}
+
+{% block header %}{{ titulo }}{% endblock %}
+
+{% block header_buttons %}
+{% if promocao %}
+<a href="{% url 'inventario:detalhe_promocao' promocao.id %}" class="btn btn-sm btn-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar para Detalhes
+</a>
+{% else %}
+<a href="{% url 'inventario:lista_promocoes' %}" class="btn btn-sm btn-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar para Lista
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" class="row g-3">
+                    {% csrf_token %}
+                    
+                    <div class="col-md-12">
+                        {{ form.nome|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-12">
+                        {{ form.produtos|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.data_inicio|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.data_fim|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.percentual_desconto|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.preco_promocional|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-12">
+                        {{ form.ativa|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Salvar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const percentualInput = document.getElementById('id_percentual_desconto');
+        const precoPromocionalInput = document.getElementById('id_preco_promocional');
+        
+        // Desabilitar um campo quando o outro for preenchido
+        function atualizarCampos() {
+            if (percentualInput.value) {
+                precoPromocionalInput.value = '';
+                precoPromocionalInput.setAttribute('disabled', 'disabled');
+            } else if (precoPromocionalInput.value) {
+                percentualInput.value = '';
+                percentualInput.setAttribute('disabled', 'disabled');
+            } else {
+                precoPromocionalInput.removeAttribute('disabled');
+                percentualInput.removeAttribute('disabled');
+            }
+        }
+        
+        // Adicionar listeners
+        if (percentualInput && precoPromocionalInput) {
+            percentualInput.addEventListener('input', atualizarCampos);
+            precoPromocionalInput.addEventListener('input', atualizarCampos);
+            
+            // Executar na inicialização
+            atualizarCampos();
+        }
+    });
+</script>
+{% endblock %} 

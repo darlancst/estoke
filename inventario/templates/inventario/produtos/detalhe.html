@@ -1,0 +1,207 @@
+{% extends 'inventario/base.html' %}
+{% load template_filters %}
+
+{% block title %}{{ produto.nome }} - Detalhes do Produto{% endblock %}
+
+{% block header %}Detalhes do Produto{% endblock %}
+
+{% block header_buttons %}
+<div class="btn-group" role="group">
+    <a href="{% url 'inventario:lista_produtos' %}" class="btn btn-sm btn-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar para Lista
+    </a>
+    <a href="{% url 'inventario:editar_produto' produto.id %}" class="btn btn-sm btn-primary">
+        <i class="bi bi-pencil"></i> Editar
+    </a>
+    <a href="{% url 'inventario:historico_precos' produto.id %}" class="btn btn-sm btn-info">
+        <i class="bi bi-clock-history"></i> Histórico de Preços
+    </a>
+    <a href="{% url 'inventario:criar_venda' %}?produto={{ produto.id }}" class="btn btn-sm btn-success">
+        <i class="bi bi-cart-plus"></i> Registrar Venda
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Informações do Produto -->
+    <div class="col-md-8">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Informações do Produto</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h3>{{ produto.nome }}</h3>
+                        <p class="text-muted">
+                            <strong>Fornecedor:</strong> 
+                            <a href="{% url 'inventario:detalhe_fornecedor' produto.fornecedor.id %}">{{ produto.fornecedor.nome }}</a>
+                        </p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <h4>
+                            <span class="badge {% if produto.quantidade == 0 %}bg-danger{% elif produto.quantidade <= configuracao.limite_estoque_baixo %}bg-warning{% else %}bg-success{% endif %}">
+                                Estoque: {{ produto.quantidade }} unidades
+                            </span>
+                        </h4>
+                        <p class="text-muted">
+                            <strong>Última atualização:</strong> {{ produto.data_atualizacao|date:"d/m/Y H:i" }}
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 class="card-title">Preço de Compra</h5>
+                                <h4 class="text-primary">R$ {{ produto.preco_compra|floatformat:2 }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 class="card-title">Preço de Venda</h5>
+                                <h4 class="text-primary">R$ {{ produto.preco_venda|floatformat:2 }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card {% if produto.margem_lucro < 10 %}bg-danger text-white{% elif produto.margem_lucro < 20 %}bg-warning{% else %}bg-success text-white{% endif %}">
+                            <div class="card-body">
+                                <h5 class="card-title">Margem de Lucro</h5>
+                                <h4>{{ produto.margem_lucro|floatformat:2 }}%</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h5>Descrição</h5>
+                    <p>{{ produto.descricao|default:"Sem descrição."|linebreaks }}</p>
+                </div>
+                
+                <!-- Histórico de Preços Recentes -->
+                <h5>Últimos Preços</h5>
+                {% if historico %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Preço de Compra</th>
+                                    <th>Preço de Venda</th>
+                                    <th>Margem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for registro in historico %}
+                                <tr>
+                                    <td>{{ registro.data|date:"d/m/Y H:i" }}</td>
+                                    <td>R$ {{ registro.preco_compra|floatformat:2 }}</td>
+                                    <td>R$ {{ registro.preco_venda|floatformat:2 }}</td>
+                                    <td>
+                                        {% with margem=registro.preco_venda|floatformat:2|sub:registro.preco_compra|floatformat:2|div:registro.preco_compra|floatformat:2|mul:100 %}
+                                        {{ margem|floatformat:2 }}%
+                                        {% endwith %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-end">
+                        <a href="{% url 'inventario:historico_precos' produto.id %}" class="btn btn-sm btn-secondary">
+                            Ver histórico completo
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        Nenhum histórico de preço registrado.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Imagem e Promoções -->
+    <div class="col-md-4">
+        <!-- Imagem do Produto -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Imagem do Produto</h5>
+            </div>
+            <div class="card-body text-center">
+                {% if produto.imagem %}
+                <img src="{{ produto.imagem.url }}" alt="{{ produto.nome }}" class="img-fluid img-thumbnail">
+                {% else %}
+                <div class="alert alert-secondary">
+                    <i class="bi bi-image"></i> Sem imagem disponível
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Promoções Ativas -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Promoções Ativas</h5>
+            </div>
+            <div class="card-body">
+                {% if promocoes_com_precos %}
+                    <div class="list-group">
+                        {% for item in promocoes_com_precos %}
+                            <a href="{% url 'inventario:detalhe_promocao' item.promocao.id %}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ item.promocao.nome }}</h6>
+                                    <small class="text-{% if item.promocao.esta_ativa %}success{% else %}muted{% endif %}">
+                                        {% if item.promocao.esta_ativa %}Ativa{% else %}Inativa{% endif %}
+                                    </small>
+                                </div>
+                                
+                                {% if item.promocao.percentual_desconto %}
+                                <p class="mb-1">
+                                    <span class="badge bg-danger">-{{ item.promocao.percentual_desconto }}%</span>
+                                    <strong>Preço final:</strong> R$ {{ item.preco_final|floatformat:2 }}
+                                </p>
+                                {% elif item.promocao.preco_promocional %}
+                                <p class="mb-1">
+                                    <span class="badge bg-danger">Preço promocional</span>
+                                    <strong>R$ {{ item.preco_final|floatformat:2 }}</strong>
+                                </p>
+                                {% endif %}
+                                
+                                <small>
+                                    Válido de {{ item.promocao.data_inicio|date:"d/m/Y" }} até {{ item.promocao.data_fim|date:"d/m/Y" }}
+                                </small>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        Nenhuma promoção ativa para este produto.
+                    </div>
+                {% endif %}
+                
+                <div class="mt-3 text-end">
+                    <a href="{% url 'inventario:criar_promocao' %}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-tags"></i> Nova Promoção
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Código para lidar com cálculos de margem -->
+<script>
+    // Função para calcular porcentagem baseado em valores
+    document.addEventListener('DOMContentLoaded', function() {
+        // Implementar cálculos extras se necessário
+    });
+</script>
+{% endblock %} 

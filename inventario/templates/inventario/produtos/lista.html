@@ -1,0 +1,112 @@
+{% extends 'inventario/base.html' %}
+
+{% block title %}Produtos - Controle de Estoque{% endblock %}
+
+{% block header %}Produtos{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'inventario:criar_produto' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-circle"></i> Novo Produto
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Formulário de Busca -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" action="{% url 'inventario:busca_produtos' %}" class="mb-0">
+            <div class="row g-2">
+                <div class="col-md-10 col-sm-12">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                        {{ form.termo }}
+                    </div>
+                </div>
+                <div class="col-md-2 col-sm-12">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        Buscar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de Produtos -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Lista de Produtos</h5>
+        <span class="badge bg-info">Total: {{ produtos.count }}</span>
+    </div>
+    <div class="card-body">
+        {% if produtos %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Fornecedor</th>
+                            <th>Estoque</th>
+                            <th>Compra</th>
+                            <th>Venda</th>
+                            <th>Margem</th>
+                            <th>Promoções</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for produto in produtos %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'inventario:detalhe_produto' produto.id %}">
+                                    {{ produto.nome }}
+                                </a>
+                            </td>
+                            <td>{{ produto.fornecedor.nome }}</td>
+                            <td>
+                                <span class="badge {% if produto.quantidade == 0 %}bg-danger{% elif produto.quantidade <= configuracao.limite_estoque_baixo %}bg-warning{% else %}bg-success{% endif %}">
+                                    {{ produto.quantidade }}
+                                </span>
+                            </td>
+                            <td>R$ {{ produto.preco_compra|floatformat:2 }}</td>
+                            <td>R$ {{ produto.preco_venda|floatformat:2 }}</td>
+                            <td>{{ produto.margem_lucro|floatformat:2 }}%</td>
+                            <td>
+                                {% if produto.promocoes_ativas %}
+                                    <span class="badge bg-success">Sim</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Não</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'inventario:detalhe_produto' produto.id %}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Detalhes">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:editar_produto' produto.id %}" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:adicionar_estoque' produto.id %}" class="btn btn-sm btn-success" data-bs-toggle="tooltip" title="Adicionar ao Estoque">
+                                        <i class="bi bi-plus-circle"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:historico_precos' produto.id %}" class="btn btn-sm btn-secondary" data-bs-toggle="tooltip" title="Histórico de Preços">
+                                        <i class="bi bi-clock-history"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:excluir_produto' produto.id %}" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle"></i> Nenhum produto encontrado.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

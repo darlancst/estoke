@@ -1,0 +1,220 @@
+{% extends 'inventario/base.html' %}
+{% load template_filters %}
+
+{% block title %}Histórico de Preços - {{ produto.nome }}{% endblock %}
+
+{% block header %}Histórico de Preços{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'inventario:detalhe_produto' produto.id %}" class="btn btn-sm btn-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar para Detalhes
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Histórico de Preços: {{ produto.nome }}</h5>
+                <span class="badge bg-info">{{ historico.count }} registros</span>
+            </div>
+            <div class="card-body">
+                {% if historico %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Preço de Compra</th>
+                                    <th>Preço de Venda</th>
+                                    <th>Margem de Lucro</th>
+                                    <th>Variação do Preço de Compra</th>
+                                    <th>Variação do Preço de Venda</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for registro in historico %}
+                                <tr>
+                                    <td>{{ registro.data|date:"d/m/Y H:i" }}</td>
+                                    <td>R$ {{ registro.preco_compra|floatformat:2 }}</td>
+                                    <td>R$ {{ registro.preco_venda|floatformat:2 }}</td>
+                                    <td>
+                                        {% with margem=registro.preco_venda|sub:registro.preco_compra|div:registro.preco_compra|mul:100 %}
+                                        <span class="badge {% if margem < 10 %}bg-danger{% elif margem < 20 %}bg-warning{% else %}bg-success{% endif %}">
+                                            {{ margem|floatformat:2 }}%
+                                        </span>
+                                        {% endwith %}
+                                    </td>
+                                    <td>
+                                        {% if not forloop.last %}
+                                            {% with anterior=historico|slice:forloop.counter %}
+                                                {% with registro_anterior=anterior.0 %}
+                                                    {% with variacao=registro.preco_compra|sub:registro_anterior.preco_compra %}
+                                                        {% with percentual=variacao|div:registro_anterior.preco_compra|mul:100 %}
+                                                            {% if percentual > 0 %}
+                                                                <span class="text-danger">
+                                                                    <i class="bi bi-arrow-up-right"></i>
+                                                                    +{{ percentual|floatformat:2 }}% (R$ {{ variacao|floatformat:2 }})
+                                                                </span>
+                                                            {% elif percentual < 0 %}
+                                                                <span class="text-success">
+                                                                    <i class="bi bi-arrow-down-right"></i>
+                                                                    {{ percentual|floatformat:2 }}% (R$ {{ variacao|floatformat:2 }})
+                                                                </span>
+                                                            {% else %}
+                                                                <span class="text-muted">
+                                                                    <i class="bi bi-dash"></i>
+                                                                    Sem alteração
+                                                                </span>
+                                                            {% endif %}
+                                                        {% endwith %}
+                                                    {% endwith %}
+                                                {% endwith %}
+                                            {% endwith %}
+                                        {% else %}
+                                            <span class="text-muted">Primeiro registro</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if not forloop.last %}
+                                            {% with anterior=historico|slice:forloop.counter %}
+                                                {% with registro_anterior=anterior.0 %}
+                                                    {% with variacao=registro.preco_venda|sub:registro_anterior.preco_venda %}
+                                                        {% with percentual=variacao|div:registro_anterior.preco_venda|mul:100 %}
+                                                            {% if percentual > 0 %}
+                                                                <span class="text-danger">
+                                                                    <i class="bi bi-arrow-up-right"></i>
+                                                                    +{{ percentual|floatformat:2 }}% (R$ {{ variacao|floatformat:2 }})
+                                                                </span>
+                                                            {% elif percentual < 0 %}
+                                                                <span class="text-success">
+                                                                    <i class="bi bi-arrow-down-right"></i>
+                                                                    {{ percentual|floatformat:2 }}% (R$ {{ variacao|floatformat:2 }})
+                                                                </span>
+                                                            {% else %}
+                                                                <span class="text-muted">
+                                                                    <i class="bi bi-dash"></i>
+                                                                    Sem alteração
+                                                                </span>
+                                                            {% endif %}
+                                                        {% endwith %}
+                                                    {% endwith %}
+                                                {% endwith %}
+                                            {% endwith %}
+                                        {% else %}
+                                            <span class="text-muted">Primeiro registro</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Nenhum histórico de preço registrado para este produto.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráfico de Evolução de Preços -->
+{% if historico %}
+<div class="row mt-4">
+    <div class="col-md-10 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Evolução dos Preços</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="evolucaoPrecosChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if historico %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('evolucaoPrecosChart').getContext('2d');
+        
+        // Preparar dados para o gráfico
+        const dados = [
+            {% for registro in historico reversed %}
+                {
+                    data: "{{ registro.data|date:'d/m/Y H:i' }}",
+                    precoCompra: {{ registro.preco_compra }},
+                    precoVenda: {{ registro.preco_venda }}
+                }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        
+        const labels = dados.map(item => item.data);
+        const precosCompra = dados.map(item => item.precoCompra);
+        const precosVenda = dados.map(item => item.precoVenda);
+        
+        // Criar o gráfico
+        const evolucaoPrecosChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Preço de Compra',
+                        data: precosCompra,
+                        borderColor: 'rgb(54, 162, 235)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        tension: 0.1,
+                        fill: true
+                    },
+                    {
+                        label: 'Preço de Venda',
+                        data: precosVenda,
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                        tension: 0.1,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            callback: function(value) {
+                                return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += 'R$ ' + context.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endif %}
+{% endblock %} 

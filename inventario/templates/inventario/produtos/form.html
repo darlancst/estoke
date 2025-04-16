@@ -1,0 +1,242 @@
+{% extends 'inventario/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ titulo }} - Controle de Estoque{% endblock %}
+
+{% block header %}{{ titulo }}{% endblock %}
+
+{% block header_buttons %}
+{% if produto %}
+<a href="{% url 'inventario:detalhe_produto' produto.id %}" class="btn btn-sm btn-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar para Detalhes
+</a>
+{% else %}
+<a href="{% url 'inventario:lista_produtos' %}" class="btn btn-sm btn-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar para Lista
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 mx-auto">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" class="row g-3">
+                    {% csrf_token %}
+                    
+                    <div class="col-md-6">
+                        {{ form.nome|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="{{ form.fornecedor.id_for_label }}">{{ form.fornecedor.label }}</label>
+                            <div class="input-group">
+                                {{ form.fornecedor }}
+                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#fornecedorModal">
+                                    <i class="bi bi-plus-circle"></i> Cadastrar Fornecedor
+                                </button>
+                            </div>
+                            {% if form.fornecedor.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.fornecedor.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">{{ form.fornecedor.help_text }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12">
+                        {{ form.descricao|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-4">
+                        {{ form.quantidade|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-4">
+                        {{ form.preco_compra|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-4">
+                        {{ form.preco_venda|as_crispy_field }}
+                    </div>
+                    
+                    {% if form.instance.id %}
+                    <div class="col-md-6">
+                        <div class="alert alert-info">
+                            <strong>Margem de Lucro:</strong> {{ form.instance.margem_lucro|floatformat:2 }}%
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="col-12">
+                        {{ form.imagem|as_crispy_field }}
+                    </div>
+                    
+                    {% if form.instance.imagem %}
+                    <div class="col-12">
+                        <div class="card mb-3">
+                            <div class="card-header">Imagem Atual</div>
+                            <div class="card-body text-center">
+                                <img src="{{ form.instance.imagem.url }}" alt="{{ form.instance.nome }}" style="max-height: 200px;" class="img-thumbnail">
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Salvar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Cadastro Rápido de Fornecedor -->
+<div class="modal fade" id="fornecedorModal" tabindex="-1" aria-labelledby="fornecedorModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="fornecedorModalLabel">Cadastro Rápido de Fornecedor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <form id="fornecedorRapidoForm" class="row g-3">
+                    <div class="col-12">
+                        <label for="fornecedor_nome" class="form-label">Nome do Fornecedor*</label>
+                        <input type="text" class="form-control" id="fornecedor_nome" name="nome" required>
+                    </div>
+                    <div class="col-12">
+                        <label for="fornecedor_telefone" class="form-label">Telefone (opcional)</label>
+                        <input type="text" class="form-control" id="fornecedor_telefone" name="telefone">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="salvarFornecedorBtn">Salvar Fornecedor</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Calcular e exibir margem de lucro em tempo real
+    document.addEventListener('DOMContentLoaded', function() {
+        const precoCompraInput = document.getElementById('id_preco_compra');
+        const precoVendaInput = document.getElementById('id_preco_venda');
+        
+        function calcularMargem() {
+            const precoCompra = parseFloat(precoCompraInput.value) || 0;
+            const precoVenda = parseFloat(precoVendaInput.value) || 0;
+            
+            if (precoCompra > 0 && precoVenda > 0) {
+                const margem = ((precoVenda - precoCompra) / precoCompra) * 100;
+                
+                // Verificar se já existe o elemento de margem, senão criar
+                let margemElement = document.getElementById('margem-calculada');
+                if (!margemElement) {
+                    const colDiv = document.createElement('div');
+                    colDiv.className = 'col-md-6';
+                    
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-info';
+                    alertDiv.id = 'margem-calculada';
+                    
+                    const strongEl = document.createElement('strong');
+                    strongEl.textContent = 'Margem de Lucro (calculada): ';
+                    
+                    const spanEl = document.createElement('span');
+                    
+                    alertDiv.appendChild(strongEl);
+                    alertDiv.appendChild(spanEl);
+                    colDiv.appendChild(alertDiv);
+                    
+                    // Inserir após os campos de preço
+                    precoVendaInput.closest('.col-md-4').after(colDiv);
+                    margemElement = alertDiv;
+                }
+                
+                // Atualizar o valor da margem
+                const spanElement = margemElement.querySelector('span') || margemElement;
+                spanElement.textContent = margem.toFixed(2) + '%';
+                
+                // Mudar a cor baseado na margem
+                if (margem < 10) {
+                    margemElement.className = 'alert alert-danger';
+                } else if (margem < 20) {
+                    margemElement.className = 'alert alert-warning';
+                } else {
+                    margemElement.className = 'alert alert-success';
+                }
+            }
+        }
+        
+        // Adicionar listeners para os campos de preço
+        if (precoCompraInput && precoVendaInput) {
+            precoCompraInput.addEventListener('input', calcularMargem);
+            precoVendaInput.addEventListener('input', calcularMargem);
+            
+            // Calcular inicial se os valores já estiverem preenchidos
+            calcularMargem();
+        }
+        
+        // Cadastro rápido de fornecedor
+        const salvarFornecedorBtn = document.getElementById('salvarFornecedorBtn');
+        if (salvarFornecedorBtn) {
+            salvarFornecedorBtn.addEventListener('click', function() {
+                const fornecedorNome = document.getElementById('fornecedor_nome').value;
+                const fornecedorTelefone = document.getElementById('fornecedor_telefone').value;
+                
+                if (!fornecedorNome) {
+                    alert('Por favor, informe o nome do fornecedor.');
+                    return;
+                }
+                
+                // Enviar requisição AJAX para criar o fornecedor
+                fetch('{% url "inventario:api_criar_fornecedor" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({
+                        nome: fornecedorNome,
+                        telefone: fornecedorTelefone
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Adicionar o novo fornecedor ao select
+                        const fornecedorSelect = document.getElementById('id_fornecedor');
+                        const novaOpcao = new Option(data.fornecedor.nome, data.fornecedor.id);
+                        fornecedorSelect.options.add(novaOpcao);
+                        fornecedorSelect.value = data.fornecedor.id;
+                        
+                        // Fechar o modal
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('fornecedorModal'));
+                        modal.hide();
+                        
+                        // Limpar o formulário
+                        document.getElementById('fornecedorRapidoForm').reset();
+                    } else {
+                        alert('Erro ao cadastrar fornecedor: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro ao cadastrar fornecedor. Verifique o console para mais detalhes.');
+                });
+            });
+        }
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,305 @@
+{% extends 'inventario/base.html' %}
+{% load crispy_forms_tags %}
+{% load template_filters %}
+
+{% block title %}Vendas - Controle de Estoque{% endblock %}
+
+{% block header %}Vendas{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'inventario:criar_venda' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-circle"></i> Nova Venda
+</a>
+<button class="btn btn-sm btn-outline-secondary ms-2" id="toggleFilterBtn">
+    <i class="bi bi-funnel"></i> Filtros
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Filtro de Período - Agora com toggle -->
+<div class="card mb-3" id="filtroCard" style="display: none;">
+    <div class="card-header bg-light py-2">
+        <div class="d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 small"><i class="bi bi-funnel me-1"></i>Filtros</h6>
+            <button type="button" class="btn-close btn-sm" id="closeFilterBtn" aria-label="Fechar"></button>
+        </div>
+    </div>
+    <div class="card-body py-2">
+        <form method="get" action="{% url 'inventario:lista_vendas' %}" id="filtroForm" class="mb-0">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3 col-sm-12">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light"><i class="bi bi-calendar-range"></i></span>
+                        {{ periodo_form.periodo }}
+                    </div>
+                </div>
+                
+                <div class="col-md-7 col-sm-12 data-custom" style="display: none;">
+                    <div class="d-flex gap-2">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light"><i class="bi bi-calendar-minus"></i></span>
+                            {{ periodo_form.data_inicio }}
+                        </div>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light"><i class="bi bi-calendar-plus"></i></span>
+                            {{ periodo_form.data_fim }}
+                        </div>
+                        <button type="button" id="limparDatasBtn" class="btn btn-outline-secondary btn-sm" title="Limpar datas">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="col-md-2 col-sm-12 text-end">
+                    <div class="btn-group btn-group-sm">
+                        <button type="reset" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-filter"></i> Aplicar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Formulário de Busca - Mais compacto -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" action="{% url 'inventario:busca_vendas' %}" class="mb-0">
+            <!-- Preservar os filtros de período na busca -->
+            <input type="hidden" name="periodo" value="{{ request.GET.periodo }}">
+            {% if request.GET.data_inicio %}
+                <input type="hidden" name="data_inicio" value="{{ request.GET.data_inicio }}">
+            {% endif %}
+            {% if request.GET.data_fim %}
+                <input type="hidden" name="data_fim" value="{{ request.GET.data_fim }}">
+            {% endif %}
+            
+            <div class="row g-2">
+                <div class="col-md-10 col-sm-12">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                        {{ form.termo }}
+                    </div>
+                </div>
+                <div class="col-md-2 col-sm-12">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        Buscar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de Vendas -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Lista de Vendas</h5>
+        <span class="badge bg-info">Total: {{ vendas.count }}</span>
+    </div>
+    <div class="card-body">
+        {% if vendas %}
+            <!-- Versão para desktop -->
+            <div class="table-responsive d-none d-md-block">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Data</th>
+                            <th>Cliente</th>
+                            <th>Produto</th>
+                            <th>Promoção</th>
+                            <th>Valor Total</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for venda in vendas %}
+                        <tr>
+                            <td>#{{ venda.id }}</td>
+                            <td>{{ venda.data|date:"d/m/Y H:i" }}</td>
+                            <td>{{ venda.cliente_nome }}</td>
+                            <td>{{ venda.produto.nome }}</td>
+                            <td>
+                                {% if venda.promocao %}
+                                    <span class="badge bg-danger" title="{{ venda.promocao.nome }}">
+                                        {% if venda.promocao.percentual_desconto %}
+                                            -{{ venda.promocao.percentual_desconto }}%
+                                        {% else %}
+                                            Promoção
+                                        {% endif %}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if venda.promocao %}
+                                    <span class="text-success">R$ {{ venda.valor_total|floatformat:2 }}</span>
+                                    <small class="text-muted d-block">
+                                        <del>R$ {{ venda.quantidade|mul:venda.preco_venda|floatformat:2 }}</del>
+                                    </small>
+                                {% else %}
+                                    R$ {{ venda.valor_total|floatformat:2 }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-success">Concluída</span>
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'inventario:detalhe_venda' venda.id %}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Detalhes">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:editar_venda' venda.id %}" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:excluir_venda' venda.id %}" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Versão para mobile (cards) -->
+            <div class="d-md-none">
+                {% for venda in vendas %}
+                <div class="card mb-3 border">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                        <span class="fs-6 fw-bold">#{{ venda.id }}</span>
+                        <span class="badge bg-success">Concluída</span>
+                    </div>
+                    <div class="card-body py-2">
+                        <div class="row mb-2">
+                            <div class="col-7">
+                                <strong>Cliente:</strong> {{ venda.cliente_nome }}
+                            </div>
+                            <div class="col-5 text-end">
+                                <small class="text-muted">{{ venda.data|date:"d/m/Y H:i" }}</small>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Produto:</strong> {{ venda.produto.nome }}
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                {% if venda.promocao %}
+                                    <span class="badge bg-danger me-2" title="{{ venda.promocao.nome }}">
+                                        {% if venda.promocao.percentual_desconto %}
+                                            -{{ venda.promocao.percentual_desconto }}%
+                                        {% else %}
+                                            Promoção
+                                        {% endif %}
+                                    </span>
+                                {% endif %}
+                                <strong>Total:</strong>
+                                {% if venda.promocao %}
+                                    <span class="text-success">R$ {{ venda.valor_total|floatformat:2 }}</span>
+                                    <small class="text-muted">
+                                        <del>R$ {{ venda.quantidade|mul:venda.preco_venda|floatformat:2 }}</del>
+                                    </small>
+                                {% else %}
+                                    R$ {{ venda.valor_total|floatformat:2 }}
+                                {% endif %}
+                            </div>
+                            <div class="ms-auto">
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'inventario:detalhe_venda' venda.id %}" class="btn btn-sm btn-info">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:editar_venda' venda.id %}" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:excluir_venda' venda.id %}" class="btn btn-sm btn-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle"></i> Nenhuma venda registrada no período selecionado.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Controle de exibição dos campos de data personalizada
+        const periodoSelect = document.getElementById('id_periodo');
+        const dataCustomFields = document.querySelectorAll('.data-custom');
+        
+        function toggleDataFields() {
+            dataCustomFields.forEach(field => {
+                field.style.display = periodoSelect.value === 'custom' ? 'flex' : 'none';
+            });
+        }
+        
+        // Executar ao carregar a página
+        toggleDataFields();
+        
+        // Adicionar listener para mudanças
+        periodoSelect.addEventListener('change', toggleDataFields);
+        
+        // Botão de toggle para exibir/ocultar filtros
+        const toggleFilterBtn = document.getElementById('toggleFilterBtn');
+        const filtroCard = document.getElementById('filtroCard');
+        const closeFilterBtn = document.getElementById('closeFilterBtn');
+        
+        // Verificar parâmetros da URL para decidir se deve exibir o filtro
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('periodo') || urlParams.has('data_inicio')) {
+            filtroCard.style.display = 'block';
+        }
+        
+        toggleFilterBtn.addEventListener('click', function() {
+            if (filtroCard.style.display === 'none') {
+                filtroCard.style.display = 'block';
+            } else {
+                filtroCard.style.display = 'none';
+            }
+        });
+        
+        closeFilterBtn.addEventListener('click', function() {
+            filtroCard.style.display = 'none';
+        });
+        
+        // Botão para limpar campos de data
+        const limparDatasBtn = document.getElementById('limparDatasBtn');
+        const dataInicioField = document.getElementById('id_data_inicio');
+        const dataFimField = document.getElementById('id_data_fim');
+        
+        limparDatasBtn.addEventListener('click', function() {
+            dataInicioField.value = '';
+            dataFimField.value = '';
+        });
+        
+        // Melhorar aparência dos inputs
+        document.querySelectorAll('input[type="date"]').forEach(input => {
+            input.classList.add('form-control');
+            input.classList.add('form-control-sm');
+        });
+        
+        // Melhorar aparência do select de período
+        const periodoField = document.getElementById('id_periodo');
+        periodoField.classList.add('form-select');
+        periodoField.classList.add('form-select-sm');
+    });
+</script>
+{% endblock %} 

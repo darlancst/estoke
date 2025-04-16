@@ -1,0 +1,44 @@
+{% extends 'inventario/base.html' %}
+
+{% block title %}Confirmar Desativação - Controle de Estoque{% endblock %}
+
+{% block header %}Confirmar Desativação de Promoção{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'inventario:detalhe_promocao' promocao.id %}" class="btn btn-sm btn-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar para Detalhes
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-danger text-white">
+        <h5 class="card-title mb-0">Atenção!</h5>
+    </div>
+    <div class="card-body">
+        <p class="fw-bold">Você está prestes a desativar a promoção "{{ promocao.nome }}".</p>
+        <p>Ao desativar, a promoção não poderá mais ser aplicada a novas vendas, mas o histórico de vendas que utilizaram esta promoção será mantido.</p>
+        
+        <div class="alert alert-warning">
+            <h6>Informações da promoção:</h6>
+            <ul>
+                <li><strong>Nome:</strong> {{ promocao.nome }}</li>
+                <li><strong>Período:</strong> {{ promocao.data_inicio|date:"d/m/Y" }} a {{ promocao.data_fim|date:"d/m/Y" }}</li>
+                <li><strong>Produtos afetados:</strong> {{ promocao.produtos.count }}</li>
+            </ul>
+        </div>
+        
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'inventario:detalhe_promocao' promocao.id %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </a>
+                <button type="submit" class="btn btn-warning">
+                    <i class="bi bi-toggle-off"></i> Confirmar Desativação
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

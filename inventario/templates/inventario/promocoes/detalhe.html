@@ -1,0 +1,104 @@
+{% extends 'inventario/base.html' %}
+
+{% block title %}{{ promocao.nome }} - Detalhes da Promoção{% endblock %}
+
+{% block header %}Detalhes da Promoção{% endblock %}
+
+{% block header_buttons %}
+<div class="btn-group" role="group">
+    <a href="{% url 'inventario:lista_promocoes' %}" class="btn btn-sm btn-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar para Lista
+    </a>
+    <a href="{% url 'inventario:editar_promocao' promocao.id %}" class="btn btn-sm btn-primary">
+        <i class="bi bi-pencil"></i> Editar
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Informações da Promoção -->
+    <div class="col-md-8">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Informações da Promoção</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <h3>{{ promocao.nome }}</h3>
+                        <p class="text-muted">
+                            <strong>Status:</strong> 
+                            <span class="badge {% if promocao.ativa %}bg-success{% else %}bg-danger{% endif %}">
+                                {% if promocao.ativa %}Ativa{% else %}Inativa{% endif %}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <h4>
+                            {% if promocao.percentual_desconto %}
+                            <span class="badge bg-danger">{{ promocao.percentual_desconto }}% de desconto</span>
+                            {% elif promocao.preco_promocional %}
+                            <span class="badge bg-danger">Preço promocional: R$ {{ promocao.preco_promocional|floatformat:2 }}</span>
+                            {% endif %}
+                        </h4>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 class="card-title">Período</h5>
+                                <p><strong>Início:</strong> {{ promocao.data_inicio|date:"d/m/Y" }}</p>
+                                <p><strong>Término:</strong> {{ promocao.data_fim|date:"d/m/Y" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 class="card-title">Produtos</h5>
+                                <h4 class="text-primary">{{ produtos.count }} produtos</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Produtos da Promoção -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Produtos nesta Promoção</h5>
+            </div>
+            <div class="card-body">
+                {% if produtos_com_precos %}
+                    <div class="list-group">
+                        {% for item in produtos_com_precos %}
+                            <a href="{% url 'inventario:detalhe_produto' item.produto.id %}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ item.produto.nome }}</h6>
+                                    <small class="text-{% if item.produto.quantidade > 0 %}success{% else %}danger{% endif %}">
+                                        {{ item.produto.quantidade }} em estoque
+                                    </small>
+                                </div>
+                                <p class="mb-1">
+                                    <strong>Preço normal:</strong> R$ {{ item.produto.preco_venda|floatformat:2 }}<br>
+                                    <strong>Preço promocional:</strong> <span class="text-danger">R$ {{ item.preco_promocional|floatformat:2 }}</span>
+                                </p>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-info">
+                        Esta promoção não possui produtos associados.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

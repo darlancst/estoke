@@ -1,0 +1,390 @@
+{% extends 'inventario/base.html' %}
+
+{% block title %}Dashboard - Controle de Estoque{% endblock %}
+
+{% block header %}Dashboard{% endblock %}
+
+{% block header_buttons %}
+<!-- Versão para desktop do filtro de período -->
+<form method="get" class="d-none d-md-flex">
+    {{ periodo_form.periodo.label_tag }}
+    <div class="mx-2">
+        {{ periodo_form.periodo }}
+    </div>
+    
+    <div id="datas_personalizadas" class="d-flex" style="display: none;">
+        {{ periodo_form.data_inicio.label_tag }}
+        <div class="mx-2">
+            {{ periodo_form.data_inicio }}
+        </div>
+        
+        {{ periodo_form.data_fim.label_tag }}
+        <div class="mx-2">
+            {{ periodo_form.data_fim }}
+        </div>
+    </div>
+    
+    <button type="submit" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-filter"></i> Filtrar
+    </button>
+</form>
+
+<!-- Versão responsiva para mobile do filtro de período -->
+<div class="d-md-none">
+    <button class="btn btn-sm btn-outline-secondary mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePeriodo">
+        <i class="bi bi-filter"></i> Filtrar por período
+    </button>
+    
+    <div class="collapse" id="collapsePeriodo">
+        <div class="card card-body mb-3">
+            <form method="get" class="row g-2">
+                <div class="col-12 mb-2">
+                    {{ periodo_form.periodo.label_tag }}
+                    {{ periodo_form.periodo }}
+                </div>
+                
+                <div id="datas_personalizadas_mobile" style="display: none;">
+                    <div class="col-6 mb-2">
+                        {{ periodo_form.data_inicio.label_tag }}
+                        {{ periodo_form.data_inicio }}
+                    </div>
+                    
+                    <div class="col-6 mb-2">
+                        {{ periodo_form.data_fim.label_tag }}
+                        {{ periodo_form.data_fim }}
+                    </div>
+                </div>
+                
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-filter"></i> Aplicar filtro
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Cards de Estatísticas -->
+<div class="row mb-4">
+    <div class="col-6 col-md-3 mb-3 mb-md-0">
+        <div class="card card-dashboard text-white bg-primary h-100">
+            <div class="card-body p-2 p-md-3">
+                <h5 class="card-title fs-6 fs-md-5"><i class="bi bi-box-seam"></i> Produtos</h5>
+                <h3 class="card-text">{{ total_produtos }}</h3>
+                <p class="card-text small">Valor: R$ {{ valor_total_estoque|floatformat:2 }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-6 col-md-3 mb-3 mb-md-0">
+        <div class="card card-dashboard text-white bg-success h-100">
+            <div class="card-body p-2 p-md-3">
+                <h5 class="card-title fs-6 fs-md-5"><i class="bi bi-cart-check"></i> Vendas</h5>
+                <h3 class="card-text">{{ num_vendas }}</h3>
+                <p class="card-text small">
+                    {{ data_inicio|date:"d/m/Y" }} até {{ data_fim|date:"d/m/Y" }}
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-6 col-md-3 mb-3 mb-md-0">
+        <div class="card card-dashboard text-white bg-info h-100">
+            <div class="card-body p-2 p-md-3">
+                <h5 class="card-title fs-6 fs-md-5"><i class="bi bi-cash-coin"></i> Receita</h5>
+                <h3 class="card-text">R$ {{ receita_total|floatformat:2 }}</h3>
+                <p class="card-text small">Total no período</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-6 col-md-3">
+        <div class="card card-dashboard text-white bg-warning h-100">
+            <div class="card-body p-2 p-md-3">
+                <h5 class="card-title fs-6 fs-md-5"><i class="bi bi-graph-up-arrow"></i> Lucro</h5>
+                <h3 class="card-text">R$ {{ lucro_total|floatformat:2 }}</h3>
+                <p class="card-text small">Total no período</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="row mb-4">
+    <div class="col-md-8 mb-4 mb-md-0">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Evolução de Receita e Lucro</h5>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="receitaLucroChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Produtos Mais Lucrativos</h5>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="produtosLucrativosChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Produtos com Estoque Baixo -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Produtos com Estoque Baixo</h5>
+                <span class="badge bg-danger">Limite: {{ configuracao.limite_estoque_baixo }} unidades</span>
+            </div>
+            <div class="card-body">
+                {% if produtos_estoque_baixo %}
+                    <!-- Versão para desktop -->
+                    <div class="table-responsive d-none d-md-block">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Quantidade</th>
+                                    <th>Fornecedor</th>
+                                    <th>Preço de Compra</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for produto in produtos_estoque_baixo %}
+                                <tr>
+                                    <td>{{ produto.nome }}</td>
+                                    <td>
+                                        <span class="badge {% if produto.quantidade == 0 %}bg-danger{% else %}bg-warning{% endif %}">
+                                            {{ produto.quantidade }}
+                                        </span>
+                                    </td>
+                                    <td>{{ produto.fornecedor.nome }}</td>
+                                    <td>R$ {{ produto.preco_compra|floatformat:2 }}</td>
+                                    <td>
+                                        <a href="{% url 'inventario:editar_produto' produto.id %}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-pencil"></i> Editar
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Versão para mobile -->
+                    <div class="d-md-none">
+                        {% for produto in produtos_estoque_baixo %}
+                        <div class="card mb-3 border">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                                <h6 class="mb-0">{{ produto.nome }}</h6>
+                                <span class="badge {% if produto.quantidade == 0 %}bg-danger{% else %}bg-warning{% endif %}">
+                                    {{ produto.quantidade }}
+                                </span>
+                            </div>
+                            <div class="card-body py-2">
+                                <p class="mb-1"><strong>Fornecedor:</strong> {{ produto.fornecedor.nome }}</p>
+                                <p class="mb-2"><strong>Preço:</strong> R$ {{ produto.preco_compra|floatformat:2 }}</p>
+                                <div class="text-end">
+                                    <a href="{% url 'inventario:editar_produto' produto.id %}" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-success mb-0">
+                        <i class="bi bi-check-circle-fill"></i> Não há produtos com estoque abaixo do limite.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Mostrar/ocultar datas personalizadas
+    document.addEventListener('DOMContentLoaded', function() {
+        const periodoSelect = document.getElementById('id_periodo');
+        const datasPersonalizadas = document.getElementById('datas_personalizadas');
+        const datasPersonalizadasMobile = document.getElementById('datas_personalizadas_mobile');
+        
+        function toggleDatasPersonalizadas() {
+            if (periodoSelect.value === 'custom') {
+                if (datasPersonalizadas) datasPersonalizadas.style.display = 'flex';
+                if (datasPersonalizadasMobile) datasPersonalizadasMobile.style.display = 'block';
+            } else {
+                if (datasPersonalizadas) datasPersonalizadas.style.display = 'none';
+                if (datasPersonalizadasMobile) datasPersonalizadasMobile.style.display = 'none';
+            }
+        }
+        
+        // Verificar estado inicial
+        toggleDatasPersonalizadas();
+        
+        // Adicionar listener para mudanças
+        if (periodoSelect) {
+            periodoSelect.addEventListener('change', toggleDatasPersonalizadas);
+        }
+        
+        // Sincronizar seleções entre desktop e mobile
+        const periodoSelectMobile = document.querySelectorAll('#id_periodo')[1];
+        if (periodoSelect && periodoSelectMobile) {
+            periodoSelect.addEventListener('change', function() {
+                periodoSelectMobile.value = periodoSelect.value;
+                toggleDatasPersonalizadas();
+            });
+            
+            periodoSelectMobile.addEventListener('change', function() {
+                periodoSelect.value = periodoSelectMobile.value;
+                toggleDatasPersonalizadas();
+            });
+        }
+    });
+    
+    // Gráfico de Receita e Lucro
+    const receitaLucroChart = new Chart(
+        document.getElementById('receitaLucroChart'),
+        {
+            type: 'line',
+            data: {
+                labels: {{ chart_labels|safe }},
+                datasets: [
+                    {
+                        label: 'Receita',
+                        data: {{ chart_receitas|safe }},
+                        borderColor: 'rgb(13, 110, 253)',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        tension: 0.1,
+                        fill: true
+                    },
+                    {
+                        label: 'Lucro',
+                        data: {{ chart_lucros|safe }},
+                        borderColor: 'rgb(25, 135, 84)',
+                        backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                        tension: 0.1,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += 'R$ ' + context.parsed.y.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                                }
+                                return label;
+                            }
+                        }
+                    },
+                    legend: {
+                        position: window.innerWidth < 768 ? 'bottom' : 'top'
+                    }
+                }
+            }
+        }
+    );
+    
+    // Gráfico de Top 10 Produtos Lucrativos
+    const produtosLucrativos = [
+        {% for produto in produtos_lucrativos %}
+            {
+                nome: "{{ produto.nome }}",
+                lucro: {{ produto.lucro|floatformat:2 }},
+                quantidade: {{ produto.quantidade }}
+            }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    const produtosNomes = produtosLucrativos.map(p => {
+        // Truncar nomes longos para dispositivos móveis
+        if (window.innerWidth < 768 && p.nome.length > 10) {
+            return p.nome.substring(0, 10) + '...';
+        }
+        return p.nome;
+    });
+    const produtosLucros = produtosLucrativos.map(p => p.lucro);
+    
+    const produtosLucrativosChart = new Chart(
+        document.getElementById('produtosLucrativosChart'),
+        {
+            type: 'bar',
+            data: {
+                labels: produtosNomes,
+                datasets: [
+                    {
+                        label: 'Lucro (R$)',
+                        data: produtosLucros,
+                        backgroundColor: 'rgba(25, 135, 84, 0.7)',
+                        borderColor: 'rgb(25, 135, 84)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return 'R$ ' + value.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const produto = produtosLucrativos[context.dataIndex];
+                                let label = `Lucro: R$ ${produto.lucro.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+                                label += `\nQuantidade vendida: ${produto.quantidade}`;
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    );
+</script>
+{% endblock %} 

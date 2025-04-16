@@ -1,0 +1,80 @@
+{% extends 'inventario/base.html' %}
+
+{% block title %}Devoluções - Controle de Estoque{% endblock %}
+
+{% block header %}Devoluções{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'inventario:criar_devolucao' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-circle"></i> Nova Devolução
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Lista de Devoluções</h5>
+        <span class="badge bg-info">Total: {{ devolucoes.count }}</span>
+    </div>
+    <div class="card-body">
+        {% if devolucoes %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Data</th>
+                            <th>Cliente</th>
+                            <th>Produto</th>
+                            <th>Quantidade</th>
+                            <th>Motivo</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for devolucao in devolucoes %}
+                        <tr>
+                            <td>#{{ devolucao.id }}</td>
+                            <td>{{ devolucao.data|date:"d/m/Y H:i" }}</td>
+                            <td>{{ devolucao.venda.cliente_nome }}</td>
+                            <td>{{ devolucao.venda.produto.nome }}</td>
+                            <td>{{ devolucao.quantidade }}</td>
+                            <td>{{ devolucao.motivo|truncatechars:30 }}</td>
+                            <td>
+                                {% if devolucao.status == 'pendente' %}
+                                    <span class="badge bg-warning">Pendente</span>
+                                {% elif devolucao.status == 'aprovada' %}
+                                    <span class="badge bg-success">Aprovada</span>
+                                {% elif devolucao.status == 'recusada' %}
+                                    <span class="badge bg-danger">Recusada</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ devolucao.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'inventario:detalhe_devolucao' devolucao.id %}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Detalhes">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:editar_devolucao' devolucao.id %}" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:excluir_devolucao' devolucao.id %}" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Excluir">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle"></i> Nenhuma devolução registrada.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

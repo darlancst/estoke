@@ -1,0 +1,174 @@
+{% extends 'inventario/base.html' %}
+
+{% block title %}Devolução #{{ devolucao.id }} - Controle de Estoque{% endblock %}
+
+{% block header %}Detalhes da Devolução/Troca{% endblock %}
+
+{% block header_buttons %}
+<div class="btn-group" role="group">
+    <a href="{% url 'inventario:lista_devolucoes' %}" class="btn btn-sm btn-secondary">
+        <i class="bi bi-arrow-left"></i> Voltar para Lista
+    </a>
+    {% if devolucao.status == 'pendente' %}
+    <a href="{% url 'inventario:editar_devolucao' devolucao.id %}" class="btn btn-sm btn-primary">
+        <i class="bi bi-pencil"></i> Editar
+    </a>
+    {% endif %}
+    <a href="{% url 'inventario:detalhe_venda' devolucao.venda.id %}" class="btn btn-sm btn-info">
+        <i class="bi bi-cart"></i> Ver Venda
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Informações da Devolução -->
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Informações da Devolução/Troca</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h3>{{ devolucao.get_tipo_display }} #{{ devolucao.id }}</h3>
+                        <p class="text-muted">
+                            <strong>Data:</strong> {{ devolucao.data|date:"d/m/Y H:i" }}
+                        </p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <h4>
+                            <span class="badge 
+                            {% if devolucao.status == 'pendente' %}bg-warning
+                            {% elif devolucao.status == 'aprovada' %}bg-success
+                            {% elif devolucao.status == 'recusada' %}bg-danger
+                            {% else %}bg-info{% endif %}">
+                                {{ devolucao.get_status_display }}
+                            </span>
+                        </h4>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h5 class="card-title">Venda Original</h5>
+                                        <p>
+                                            <strong>Venda #{{ devolucao.venda.id }}</strong><br>
+                                            <strong>Cliente:</strong> {{ devolucao.venda.cliente_nome }}<br>
+                                            <strong>Data:</strong> {{ devolucao.venda.data|date:"d/m/Y" }}<br>
+                                            <strong>Produto:</strong> <a href="{% url 'inventario:detalhe_produto' devolucao.venda.produto.id %}">{{ devolucao.venda.produto.nome }}</a><br>
+                                            <strong>Quantidade vendida:</strong> {{ devolucao.venda.quantidade }}<br>
+                                            <strong>Preço unitário:</strong> R$ {{ devolucao.venda.preco_venda|floatformat:2 }}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h5 class="card-title">Detalhes da Devolução</h5>
+                                        <p>
+                                            <strong>Tipo:</strong> {{ devolucao.get_tipo_display }}<br>
+                                            <strong>Quantidade devolvida:</strong> {{ devolucao.quantidade }}<br>
+                                            <strong>Valor do reembolso:</strong> R$ {{ devolucao.valor_reembolso|floatformat:2 }}
+                                        </p>
+                                        
+                                        {% if devolucao.tipo == 'troca' and devolucao.produto_troca %}
+                                        <div class="alert alert-info">
+                                            <h6>Produto para Troca</h6>
+                                            <p>
+                                                <a href="{% url 'inventario:detalhe_produto' devolucao.produto_troca.id %}">{{ devolucao.produto_troca.nome }}</a><br>
+                                                <strong>Preço unitário:</strong> R$ {{ devolucao.produto_troca.preco_venda|floatformat:2 }}
+                                            </p>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Motivo</h5>
+                    </div>
+                    <div class="card-body">
+                        {{ devolucao.motivo|linebreaks }}
+                    </div>
+                </div>
+                
+                {% if devolucao.status == 'pendente' %}
+                <div class="card mt-4">
+                    <div class="card-header bg-warning">
+                        <h5 class="card-title mb-0">Ações Pendentes</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Esta devolução/troca está pendente de aprovação.</p>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <form method="post" action="{% url 'inventario:aprovar_devolucao' devolucao.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="bi bi-check-circle"></i> Aprovar
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="col-md-6">
+                                <form method="post" action="{% url 'inventario:recusar_devolucao' devolucao.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger w-100">
+                                        <i class="bi bi-x-circle"></i> Recusar
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Informações Adicionais -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Histórico</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group">
+                    <li class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Venda realizada</h6>
+                            <small>{{ devolucao.venda.data|date:"d/m/Y" }}</small>
+                        </div>
+                        <p class="mb-1">Cliente comprou {{ devolucao.venda.quantidade }} unidade(s) de {{ devolucao.venda.produto.nome }}</p>
+                    </li>
+                    <li class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Solicitação de {{ devolucao.get_tipo_display }}</h6>
+                            <small>{{ devolucao.data|date:"d/m/Y" }}</small>
+                        </div>
+                        <p class="mb-1">Cliente solicitou {{ devolucao.get_tipo_display }} de {{ devolucao.quantidade }} unidade(s)</p>
+                    </li>
+                    
+                    {% if devolucao.status != 'pendente' %}
+                    <li class="list-group-item
+                        {% if devolucao.status == 'aprovada' %}list-group-item-success
+                        {% elif devolucao.status == 'recusada' %}list-group-item-danger
+                        {% else %}list-group-item-info{% endif %}">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Solicitação {{ devolucao.get_status_display }}</h6>
+                            <small>{{ devolucao.data_atualizacao|date:"d/m/Y"|default:"" }}</small>
+                        </div>
+                        <p class="mb-1">A solicitação foi {{ devolucao.get_status_display|lower }}</p>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

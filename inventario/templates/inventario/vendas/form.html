@@ -1,0 +1,92 @@
+{% extends 'inventario/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ titulo }} - Controle de Estoque{% endblock %}
+
+{% block header %}{{ titulo }}{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'inventario:lista_vendas' %}" class="btn btn-sm btn-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar para Lista
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" class="row g-3">
+                    {% csrf_token %}
+                    
+                    <div class="col-md-6">
+                        {{ form.produto|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.cliente_nome|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.quantidade|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.preco_venda|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.data|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.tipo_venda|as_crispy_field }}
+                    </div>
+                    
+                    <div class="col-12 d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Salvar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Atualizar preço de venda quando o produto mudar
+    document.addEventListener('DOMContentLoaded', function() {
+        const produtoSelect = document.getElementById('id_produto');
+        const precoVendaInput = document.getElementById('id_preco_venda');
+        
+        // Mapeia os produtos e seus preços
+        const produtos = {
+            {% for produto in form.fields.produto.queryset %}
+                "{{ produto.id }}": {
+                    "preco": {{ produto.preco_venda }},
+                    "estoque": {{ produto.quantidade }}
+                }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        };
+        
+        // Função para atualizar o preço
+        function atualizarPreco() {
+            const produtoId = produtoSelect.value;
+            if (produtoId && produtos[produtoId]) {
+                precoVendaInput.value = produtos[produtoId].preco.toFixed(2);
+            }
+        }
+        
+        // Listener para mudança de produto
+        produtoSelect.addEventListener('change', atualizarPreco);
+        
+        // Atualizar ao carregar a página
+        if (produtoSelect.value) {
+            atualizarPreco();
+        }
+    });
+</script>
+{% endblock %} 

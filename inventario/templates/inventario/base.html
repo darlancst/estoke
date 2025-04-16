@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Controle de Estoque{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        main {
+            flex: 1;
+        }
+        .sidebar {
+            min-height: calc(100vh - 56px);
+            background-color: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            transition: all 0.3s;
+        }
+        .sidebar .nav-link {
+            color: #495057;
+            padding: 0.7rem 1rem;
+            display: flex;
+            align-items: center;
+            transition: 0.3s;
+        }
+        .sidebar .nav-link i {
+            margin-right: 10px;
+            font-size: 1.1rem;
+        }
+        .sidebar .nav-link:hover {
+            background-color: #e9ecef;
+        }
+        .sidebar .nav-link.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+        .table-hover tbody tr:hover {
+            background-color: rgba(13, 110, 253, 0.1);
+        }
+        .card-dashboard {
+            transition: transform 0.3s;
+        }
+        .card-dashboard:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Estilos responsivos para dispositivos móveis */
+        @media (max-width: 767.98px) {
+            .sidebar {
+                position: fixed;
+                top: 56px;
+                left: -100%;
+                width: 80%;
+                max-width: 250px;
+                z-index: 1030;
+                height: calc(100vh - 56px);
+                box-shadow: 3px 0 10px rgba(0,0,0,0.1);
+                overflow-y: auto;
+                background-color: white;
+            }
+            .sidebar.show {
+                left: 0;
+            }
+            main {
+                width: 100%;
+                padding-left: 15px;
+                padding-right: 15px;
+            }
+            .table-responsive {
+                font-size: 0.9rem;
+            }
+            .btn-group .btn-sm {
+                padding: 0.2rem 0.4rem;
+                font-size: 0.75rem;
+            }
+            .header-title-mobile {
+                font-size: 1.4rem !important;
+            }
+            .header-actions-mobile {
+                margin-top: 10px;
+                justify-content: flex-start !important;
+            }
+            .mobile-full-width {
+                width: 100% !important;
+            }
+            .mobile-scroll-container {
+                overflow-x: auto;
+                white-space: nowrap;
+                padding-bottom: 5px;
+            }
+            /* Ocultar elementos não essenciais em telas muito pequenas */
+            @media (max-width: 375px) {
+                .mobile-hide-xs {
+                    display: none !important;
+                }
+            }
+            .mobile-bottom-nav {
+                display: flex;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: white;
+                z-index: 1000;
+                box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+                padding: 5px 0;
+            }
+            .mobile-bottom-nav a {
+                flex: 1;
+                text-align: center;
+                padding: 5px 0;
+                color: #495057;
+                text-decoration: none;
+                font-size: 0.7rem;
+            }
+            .mobile-bottom-nav a i {
+                display: block;
+                font-size: 1.2rem;
+                margin-bottom: 2px;
+            }
+            .mobile-bottom-nav a.active {
+                color: #0d6efd;
+            }
+            .mobile-menu-overlay {
+                display: none;
+                position: fixed;
+                top: 56px;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 1020;
+                touch-action: none;
+            }
+            .mobile-menu-overlay.show {
+                display: block;
+            }
+            /* Ajustar footer para telas pequenas */
+            footer {
+                margin-bottom: 56px; /* Altura da navegação inferior móvel */
+            }
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'inventario:dashboard' %}">
+                <i class="bi bi-box-seam-fill"></i> Controle de Estoque
+            </a>
+            <button class="navbar-toggler" type="button" id="sidebar-toggle" aria-label="Menu de navegação">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'inventario:configuracoes' %}">
+                            <i class="bi bi-gear-fill"></i> Configurações
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Mobile menu overlay -->
+    <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+    
+    <!-- Main Content -->
+    <div class="container-fluid" style="margin-top: 56px;">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 d-md-block p-0 sidebar" id="sidebar">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" 
+                               href="{% url 'inventario:dashboard' %}">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'produtos' in request.path %}active{% endif %}" 
+                               href="{% url 'inventario:lista_produtos' %}">
+                                <i class="bi bi-box"></i> Produtos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'vendas' in request.path %}active{% endif %}" 
+                               href="{% url 'inventario:lista_vendas' %}">
+                                <i class="bi bi-cart-check"></i> Vendas
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'promocoes' in request.path %}active{% endif %}" 
+                               href="{% url 'inventario:lista_promocoes' %}">
+                                <i class="bi bi-tags"></i> Promoções
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'fornecedores' in request.path %}active{% endif %}" 
+                               href="{% url 'inventario:lista_fornecedores' %}">
+                                <i class="bi bi-building"></i> Fornecedores
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'notas-fiscais' in request.path %}active{% endif %}" 
+                               href="{% url 'inventario:lista_notas_fiscais' %}">
+                                <i class="bi bi-receipt"></i> Notas Fiscais
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'devolucoes' in request.path %}active{% endif %}" 
+                               href="{% url 'inventario:lista_devolucoes' %}">
+                                <i class="bi bi-arrow-return-left"></i> Devoluções/Trocas
+                            </a>
+                        </li>
+                        <li class="nav-item d-md-none">
+                            <a class="nav-link {% if 'configuracoes' in request.path %}active{% endif %}" 
+                               href="{% url 'inventario:configuracoes' %}">
+                                <i class="bi bi-gear-fill"></i> Configurações
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+                {% if messages %}
+                    <div class="messages">
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2 header-title-mobile">{% block header %}Dashboard{% endblock %}</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0 header-actions-mobile">
+                        {% block header_buttons %}{% endblock %}
+                    </div>
+                </div>
+                
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    
+    <!-- Mobile Bottom Navigation -->
+    <div class="mobile-bottom-nav d-md-none">
+        <a href="{% url 'inventario:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+            <i class="bi bi-speedometer2"></i>
+            <span>Dashboard</span>
+        </a>
+        <a href="{% url 'inventario:lista_produtos' %}" class="{% if 'produtos' in request.path %}active{% endif %}">
+            <i class="bi bi-box"></i>
+            <span>Produtos</span>
+        </a>
+        <a href="{% url 'inventario:lista_vendas' %}" class="{% if 'vendas' in request.path %}active{% endif %}">
+            <i class="bi bi-cart-check"></i>
+            <span>Vendas</span>
+        </a>
+        <a href="{% url 'inventario:lista_promocoes' %}" class="{% if 'promocoes' in request.path %}active{% endif %}">
+            <i class="bi bi-tags"></i>
+            <span>Promoções</span>
+        </a>
+        <a href="javascript:void(0)" id="mobileMoreBtn">
+            <i class="bi bi-three-dots"></i>
+            <span>Mais</span>
+        </a>
+    </div>
+    
+    <footer class="bg-light py-3 mt-auto">
+        <div class="container text-center">
+            <p class="text-muted mb-0">
+                &copy; {% now "Y" %} Sistema de Controle de Estoque 
+            </p>
+        </div>
+    </footer>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    {% block extra_js %}{% endblock %}
+    
+    <script>
+        // Inicialização de tooltips Bootstrap
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+        
+        // Funcionalidade do menu móvel
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileMenuOverlay');
+            const moreBtn = document.getElementById('mobileMoreBtn');
+            
+            // Alternar a visibilidade do menu lateral quando clicar no botão do navbar
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    sidebar.classList.toggle('show');
+                    overlay.classList.toggle('show');
+                });
+            }
+            
+            // Mostrar menu lateral quando clicar em "Mais" no menu inferior
+            if (moreBtn) {
+                moreBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    sidebar.classList.add('show');
+                    overlay.classList.add('show');
+                });
+            }
+            
+            // Fechar menu quando clicar no overlay
+            if (overlay) {
+                overlay.addEventListener('click', function() {
+                    sidebar.classList.remove('show');
+                    overlay.classList.remove('show');
+                });
+            }
+            
+            // Fechar menu ao clicar em um link (em dispositivos móveis)
+            const navLinks = document.querySelectorAll('.sidebar .nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth < 768) {
+                        sidebar.classList.remove('show');
+                        overlay.classList.remove('show');
+                    }
+                });
+            });
+            
+            // Ajustar tabelas para dispositivos móveis
+            const responsiveTables = document.querySelectorAll('.table-responsive table');
+            if (window.innerWidth < 768) {
+                responsiveTables.forEach(table => {
+                    if (!table.classList.contains('mobile-adjusted')) {
+                        table.classList.add('mobile-adjusted');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html> 

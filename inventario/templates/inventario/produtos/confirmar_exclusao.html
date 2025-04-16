@@ -1,0 +1,62 @@
+{% extends 'inventario/base.html' %}
+
+{% block title %}Confirmar Exclusão - {{ produto.nome }}{% endblock %}
+
+{% block header %}Confirmar Exclusão{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'inventario:detalhe_produto' produto.id %}" class="btn btn-sm btn-secondary">
+    <i class="bi bi-arrow-left"></i> Voltar para Detalhes
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Confirmar Exclusão
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="lead">Você está prestes a excluir o produto <strong>{{ produto.nome }}</strong>.</p>
+                
+                <div class="alert alert-warning">
+                    <h5 class="alert-heading">Aviso!</h5>
+                    <p>Esta ação não pode ser desfeita. A exclusão deste produto removerá todos os dados associados a ele, incluindo:</p>
+                    <ul>
+                        <li>Histórico de preços</li>
+                        <li>Associações com promoções</li>
+                        <li>Imagens do produto</li>
+                    </ul>
+                    <p class="mb-0">Se o produto estiver associado a vendas ou devoluções, a exclusão não será permitida.</p>
+                </div>
+                
+                <div class="card mb-3">
+                    <div class="card-header">Detalhes do Produto</div>
+                    <div class="card-body">
+                        <p><strong>Nome:</strong> {{ produto.nome }}</p>
+                        <p><strong>Fornecedor:</strong> {{ produto.fornecedor.nome }}</p>
+                        <p><strong>Quantidade em Estoque:</strong> {{ produto.quantidade }}</p>
+                        <p><strong>Preço de Compra:</strong> R$ {{ produto.preco_compra|floatformat:2 }}</p>
+                        <p class="mb-0"><strong>Preço de Venda:</strong> R$ {{ produto.preco_venda|floatformat:2 }}</p>
+                    </div>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'inventario:detalhe_produto' produto.id %}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Confirmar Exclusão
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
