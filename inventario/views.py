@@ -10,7 +10,6 @@ from django.http import JsonResponse
 from django.core.exceptions import ValidationError
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.decorators import login_required
 
 from .models import (
     Fornecedor, Produto, HistoricoPreco, Promocao, 
@@ -60,7 +59,6 @@ def get_configuracao():
     return config
 
 # Views do Dashboard
-@login_required
 def dashboard(request):
     configuracao = get_configuracao()
     
@@ -159,12 +157,10 @@ def dashboard(request):
     return render(request, 'inventario/dashboard.html', context)
 
 # Views de Fornecedores
-@login_required
 def lista_fornecedores(request):
     fornecedores = Fornecedor.objects.all()
     return render(request, 'inventario/fornecedores/lista.html', {'fornecedores': fornecedores})
 
-@login_required
 def criar_fornecedor(request):
     if request.method == 'POST':
         form = FornecedorForm(request.POST)
@@ -177,7 +173,6 @@ def criar_fornecedor(request):
     
     return render(request, 'inventario/fornecedores/form.html', {'form': form, 'titulo': 'Novo Fornecedor'})
 
-@login_required
 def detalhe_fornecedor(request, pk):
     fornecedor = get_object_or_404(Fornecedor, pk=pk)
     produtos = fornecedor.produtos.all()
@@ -187,7 +182,6 @@ def detalhe_fornecedor(request, pk):
         'produtos': produtos
     })
 
-@login_required
 def editar_fornecedor(request, pk):
     fornecedor = get_object_or_404(Fornecedor, pk=pk)
     
@@ -206,7 +200,6 @@ def editar_fornecedor(request, pk):
         'fornecedor': fornecedor
     })
 
-@login_required
 def excluir_fornecedor(request, pk):
     fornecedor = get_object_or_404(Fornecedor, pk=pk)
     
@@ -229,7 +222,6 @@ def excluir_fornecedor(request, pk):
     return render(request, 'inventario/fornecedores/confirmar_exclusao.html', context)
 
 # Views de Produtos
-@login_required
 def lista_produtos(request):
     produtos = Produto.objects.all()
     form = BuscaProdutoForm()
@@ -250,7 +242,6 @@ def lista_produtos(request):
         'configuracao': configuracao
     })
 
-@login_required
 def busca_produtos(request):
     form = BuscaProdutoForm(request.GET)
     termo = request.GET.get('termo', '')
@@ -280,7 +271,6 @@ def busca_produtos(request):
         'configuracao': configuracao
     })
 
-@login_required
 def criar_produto(request):
     if request.method == 'POST':
         form = ProdutoForm(request.POST, request.FILES)
@@ -293,7 +283,6 @@ def criar_produto(request):
     
     return render(request, 'inventario/produtos/form.html', {'form': form, 'titulo': 'Novo Produto'})
 
-@login_required
 def detalhe_produto(request, pk):
     produto = get_object_or_404(Produto, pk=pk)
     historico = produto.historico_precos.all()[:10]  # Últimos 10 registros
@@ -314,7 +303,6 @@ def detalhe_produto(request, pk):
         'promocoes_com_precos': promocoes_com_precos
     })
 
-@login_required
 def editar_produto(request, pk):
     produto = get_object_or_404(Produto, pk=pk)
     
@@ -333,7 +321,6 @@ def editar_produto(request, pk):
         'produto': produto
     })
 
-@login_required
 def excluir_produto(request, pk):
     produto = get_object_or_404(Produto, pk=pk)
     
@@ -344,7 +331,6 @@ def excluir_produto(request, pk):
     
     return render(request, 'inventario/produtos/confirmar_exclusao.html', {'produto': produto})
 
-@login_required
 def historico_precos(request, pk):
     produto = get_object_or_404(Produto, pk=pk)
     historico = produto.historico_precos.all()
@@ -354,7 +340,6 @@ def historico_precos(request, pk):
         'historico': historico
     })
 
-@login_required
 def adicionar_estoque(request, pk):
     produto = get_object_or_404(Produto, pk=pk)
     
@@ -382,12 +367,10 @@ def adicionar_estoque(request, pk):
     })
 
 # Views de Promoções
-@login_required
 def lista_promocoes(request):
     promocoes = Promocao.objects.all()
     return render(request, 'inventario/promocoes/lista.html', {'promocoes': promocoes})
 
-@login_required
 def criar_promocao(request):
     if request.method == 'POST':
         form = PromocaoForm(request.POST)
@@ -400,7 +383,6 @@ def criar_promocao(request):
     
     return render(request, 'inventario/promocoes/form.html', {'form': form, 'titulo': 'Nova Promoção'})
 
-@login_required
 def detalhe_promocao(request, pk):
     promocao = get_object_or_404(Promocao, pk=pk)
     produtos = promocao.produtos.all()
@@ -419,7 +401,6 @@ def detalhe_promocao(request, pk):
         'produtos_com_precos': produtos_com_precos
     })
 
-@login_required
 def editar_promocao(request, pk):
     promocao = get_object_or_404(Promocao, pk=pk)
     
@@ -438,7 +419,6 @@ def editar_promocao(request, pk):
         'promocao': promocao
     })
 
-@login_required
 def excluir_promocao(request, pk):
     promocao = get_object_or_404(Promocao, pk=pk)
     
@@ -451,7 +431,6 @@ def excluir_promocao(request, pk):
     return render(request, 'inventario/promocoes/confirmar_exclusao.html', {'promocao': promocao})
 
 # Views de Vendas
-@login_required
 def lista_vendas(request):
     vendas = Venda.objects.all()
     periodo_form = PeriodoForm(request.GET or None)
@@ -467,7 +446,6 @@ def lista_vendas(request):
         'form': busca_form
     })
 
-@login_required
 def busca_vendas(request):
     form = BuscaVendaForm(request.GET)
     periodo_form = PeriodoForm(request.GET or None)
@@ -507,7 +485,6 @@ def busca_vendas(request):
         'form': form
     })
 
-@login_required
 def criar_venda(request):
     if request.method == 'POST':
         form = VendaForm(request.POST)
@@ -553,7 +530,6 @@ def criar_venda(request):
     
     return render(request, 'inventario/vendas/form.html', {'form': form, 'titulo': 'Nova Venda'})
 
-@login_required
 def detalhe_venda(request, pk):
     venda = get_object_or_404(Venda, pk=pk)
     
@@ -575,7 +551,6 @@ def detalhe_venda(request, pk):
         'devolucoes': devolucoes
     })
 
-@login_required
 def editar_venda(request, pk):
     venda = get_object_or_404(Venda, pk=pk)
     
@@ -644,7 +619,6 @@ def editar_venda(request, pk):
         'venda': venda
     })
 
-@login_required
 def excluir_venda(request, pk):
     venda = get_object_or_404(Venda, pk=pk)
     
@@ -683,7 +657,6 @@ def excluir_venda(request, pk):
     }
     return render(request, 'inventario/vendas/confirmar_exclusao.html', context)
 
-@login_required
 def gerar_nota_fiscal(request, pk):
     venda = get_object_or_404(Venda, pk=pk)
     
@@ -720,7 +693,6 @@ def gerar_nota_fiscal(request, pk):
     })
 
 # Views de Notas Fiscais
-@login_required
 def lista_notas_fiscais(request):
     notas_fiscais = NotaFiscal.objects.all()
     periodo_form = PeriodoForm(request.GET or None)
@@ -734,18 +706,15 @@ def lista_notas_fiscais(request):
         'periodo_form': periodo_form
     })
 
-@login_required
 def detalhe_nota_fiscal(request, numero):
     nota_fiscal = get_object_or_404(NotaFiscal, numero=numero)
     return render(request, 'inventario/notas_fiscais/detalhe.html', {'nota_fiscal': nota_fiscal})
 
 # Views de Devoluções/Trocas
-@login_required
 def lista_devolucoes(request):
     devolucoes = Devolucao.objects.all()
     return render(request, 'inventario/devolucoes/lista.html', {'devolucoes': devolucoes})
 
-@login_required
 def criar_devolucao(request):
     if request.method == 'POST':
         form = DevolucaoForm(request.POST)
@@ -768,12 +737,10 @@ def criar_devolucao(request):
     
     return render(request, 'inventario/devolucoes/form.html', {'form': form, 'titulo': 'Nova Devolução/Troca'})
 
-@login_required
 def detalhe_devolucao(request, pk):
     devolucao = get_object_or_404(Devolucao, pk=pk)
     return render(request, 'inventario/devolucoes/detalhe.html', {'devolucao': devolucao})
 
-@login_required
 def editar_devolucao(request, pk):
     devolucao = get_object_or_404(Devolucao, pk=pk)
     
@@ -797,7 +764,6 @@ def editar_devolucao(request, pk):
         'devolucao': devolucao
     })
 
-@login_required
 def excluir_devolucao(request, pk):
     devolucao = get_object_or_404(Devolucao, pk=pk)
     
@@ -831,7 +797,6 @@ def excluir_devolucao(request, pk):
     
     return render(request, 'inventario/devolucoes/confirmar_exclusao.html', {'devolucao': devolucao})
 
-@login_required
 @require_POST
 def aprovar_devolucao(request, pk):
     devolucao = get_object_or_404(Devolucao, pk=pk)
@@ -848,7 +813,6 @@ def aprovar_devolucao(request, pk):
     messages.success(request, 'Devolução/Troca aprovada com sucesso!')
     return redirect('inventario:detalhe_devolucao', pk=devolucao.pk)
 
-@login_required
 @require_POST
 def recusar_devolucao(request, pk):
     devolucao = get_object_or_404(Devolucao, pk=pk)
@@ -866,7 +830,6 @@ def recusar_devolucao(request, pk):
     return redirect('inventario:detalhe_devolucao', pk=devolucao.pk)
 
 # Views de Configurações
-@login_required
 def configuracoes(request):
     config = get_configuracao()
     
@@ -881,7 +844,6 @@ def configuracoes(request):
     
     return render(request, 'inventario/configuracoes.html', {'form': form, 'config': config})
 
-@login_required
 @require_POST
 def api_criar_fornecedor(request):
     """API para criar fornecedor rapidamente"""
