@@ -36,7 +36,7 @@
                         <h3>{{ produto.nome }}</h3>
                         <p class="text-muted">
                             <strong>Fornecedor:</strong> 
-                            <a href="{% url 'inventario:detalhe_fornecedor' produto.fornecedor.id %}">{{ produto.fornecedor.nome }}</a>
+                            {{ produto.fornecedor.nome }}
                         </p>
                     </div>
                     <div class="col-md-6 text-end">

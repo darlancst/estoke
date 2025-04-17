@@ -11,12 +11,6 @@ urlpatterns = [
     path('api/fornecedores/criar/', views.api_criar_fornecedor, name='api_criar_fornecedor'),
     
     # Fornecedores
-    path('fornecedores/', views.lista_fornecedores, name='lista_fornecedores'),
-    path('fornecedores/novo/', views.criar_fornecedor, name='criar_fornecedor'),
-    path('fornecedores/<int:pk>/', views.detalhe_fornecedor, name='detalhe_fornecedor'),
-    path('fornecedores/<int:pk>/editar/', views.editar_fornecedor, name='editar_fornecedor'),
-    path('fornecedores/<int:pk>/excluir/', views.excluir_fornecedor, name='excluir_fornecedor'),
-    
     # Produtos
     path('produtos/', views.lista_produtos, name='lista_produtos'),
     path('produtos/novo/', views.criar_produto, name='criar_produto'),
