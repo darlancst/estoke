@@ -123,6 +123,7 @@ class Venda(models.Model):
     TIPO_CHOICES = (
         ('entrega', 'Entrega'),
         ('retirada', 'Retirada'),
+        ('loja', 'Loja'),
     )
     
     produto = models.ForeignKey(Produto, on_delete=models.PROTECT, related_name='vendas')
@@ -159,15 +160,21 @@ class Venda(models.Model):
         return 0
     
     def lucro(self):
-        """Calcula o lucro da venda"""
+        """Calcula o lucro da venda, considerando o tipo de venda 'Loja'."""
         custo_total = self.quantidade * self.produto.preco_compra
-        return self.valor_total() - custo_total
+        lucro_bruto = self.valor_total() - custo_total
+        
+        if self.tipo_venda == 'loja':
+            return lucro_bruto / 2
+        return lucro_bruto
     
     def margem_lucro(self):
-        """Calcula a margem de lucro da venda"""
+        """Calcula a margem de lucro percentual da venda."""
         custo_total = self.quantidade * self.produto.preco_compra
         if custo_total > 0:
-            return (self.lucro() / custo_total) * 100
+            # O método self.lucro() já retorna o valor ajustado (dividido por 2 se for 'loja')
+            margem = (self.lucro() / custo_total) * 100
+            return margem
         return 0
     
     def save(self, *args, **kwargs):

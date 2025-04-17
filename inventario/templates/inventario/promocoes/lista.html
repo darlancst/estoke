@@ -37,7 +37,15 @@
                             <td>{{ promocao.nome }}</td>
                             <td>{{ promocao.data_inicio|date:"d/m/Y" }}</td>
                             <td>{{ promocao.data_fim|date:"d/m/Y" }}</td>
-                            <td>{{ promocao.desconto }}%</td>
+                            <td>
+                                {% if promocao.percentual_desconto %}
+                                    {{ promocao.percentual_desconto|floatformat:1 }}% OFF
+                                {% elif promocao.preco_promocional %}
+                                    R$ {{ promocao.preco_promocional|floatformat:2 }} (Fixo)
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
                             <td>
                                 <span class="badge bg-secondary">{{ promocao.produtos.count }}</span>
                             </td>

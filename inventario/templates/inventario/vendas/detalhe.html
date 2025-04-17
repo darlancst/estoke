@@ -60,13 +60,11 @@
                     <div class="col-md-6 col-sm-12 mb-2 mb-md-0">
                         <h3 class="fs-4">Venda #{{ venda.id }}</h3>
                         <p class="text-muted mb-0">
-                            <strong>Data:</strong> {{ venda.data|date:"d/m/Y H:i" }}
+                            <strong>Data:</strong> {{ venda.data|date:"d/m/Y H:i" }}<br>
+                            <strong>Tipo:</strong> {{ venda.get_tipo_venda_display }}
                         </p>
                     </div>
                     <div class="col-md-6 col-sm-12 text-md-end">
-                        <h4>
-                            <span class="badge bg-primary">{{ venda.get_tipo_venda_display }}</span>
-                        </h4>
                         <p class="text-muted mb-0">
                             <strong>Cliente:</strong> {{ venda.cliente_nome }}
                         </p>
