@@ -120,18 +120,20 @@
                     </thead>
                     <tbody>
                         {% for venda in vendas %}
-                        <tr>
+                        <tr class="{% if venda.status == 'devolvida' %}table-warning{% endif %}">
                             <td>#{{ venda.id }}</td>
                             <td>{{ venda.data|date:"d/m/Y H:i" }}</td>
                             <td>{{ venda.cliente_nome }}</td>
                             <td>{{ venda.produto.nome }}</td>
                             <td>
-                                {% if venda.promocao %}
+                                {% if venda.promocao_aplicada_na_venda %}
                                     <span class="badge bg-danger" title="{{ venda.promocao.nome }}">
                                         {% if venda.promocao.percentual_desconto %}
                                             -{{ venda.promocao.percentual_desconto }}%
+                                        {% elif venda.promocao.preco_promocional %}
+                                            Preço Fixo
                                         {% else %}
-                                            Promoção
+                                            Promo!
                                         {% endif %}
                                     </span>
                                 {% else %}
@@ -139,26 +141,37 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if venda.promocao %}
-                                    <span class="text-success">R$ {{ venda.valor_total|floatformat:2 }}</span>
+                                {% if venda.promocao_aplicada_na_venda %}
+                                    <span class="text-success">R$ {{ venda.valor_total_efetivo|floatformat:2 }}</span>
                                     <small class="text-muted d-block">
                                         <del>R$ {{ venda.quantidade|mul:venda.preco_venda|floatformat:2 }}</del>
                                     </small>
                                 {% else %}
-                                    R$ {{ venda.valor_total|floatformat:2 }}
+                                    R$ {{ venda.valor_total_efetivo|floatformat:2 }}
                                 {% endif %}
                             </td>
                             <td>
-                                <span class="badge bg-success">Concluída</span>
+                                <span class="badge 
+                                    {% if venda.status == 'concluida' %}bg-success{% endif %}
+                                    {% if venda.status == 'devolvida' %}bg-warning text-dark{% endif %}
+                                ">
+                                    {{ venda.get_status_display }}
+                                </span>
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
                                     <a href="{% url 'inventario:detalhe_venda' venda.id %}" class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Detalhes">
                                         <i class="bi bi-eye"></i>
                                     </a>
+                                    {% if venda.status != 'devolvida' %}
                                     <a href="{% url 'inventario:editar_venda' venda.id %}" class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="Editar">
                                         <i class="bi bi-pencil"></i>
                                     </a>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-primary" disabled data-bs-toggle="tooltip" title="Não pode editar venda devolvida">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {% endif %}
                                     <a href="{% url 'inventario:excluir_venda' venda.id %}" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Excluir">
                                         <i class="bi bi-trash"></i>
                                     </a>
@@ -173,10 +186,15 @@
             <!-- Versão para mobile (cards) -->
             <div class="d-md-none">
                 {% for venda in vendas %}
-                <div class="card mb-3 border">
-                    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                <div class="card mb-3 border {% if venda.status == 'devolvida' %}border-warning{% endif %}">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2 {% if venda.status == 'devolvida' %}bg-warning-subtle{% endif %}">
                         <span class="fs-6 fw-bold">#{{ venda.id }}</span>
-                        <span class="badge bg-success">Concluída</span>
+                        <span class="badge 
+                            {% if venda.status == 'concluida' %}bg-success{% endif %}
+                            {% if venda.status == 'devolvida' %}bg-warning text-dark{% endif %}
+                        ">
+                            {{ venda.get_status_display }}
+                        </span>
                     </div>
                     <div class="card-body py-2">
                         <div class="row mb-2">
@@ -192,23 +210,25 @@
                         </div>
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                {% if venda.promocao %}
+                                {% if venda.promocao_aplicada_na_venda %}
                                     <span class="badge bg-danger me-2" title="{{ venda.promocao.nome }}">
                                         {% if venda.promocao.percentual_desconto %}
                                             -{{ venda.promocao.percentual_desconto }}%
+                                        {% elif venda.promocao.preco_promocional %}
+                                            Preço Fixo
                                         {% else %}
-                                            Promoção
+                                            Promo!
                                         {% endif %}
                                     </span>
                                 {% endif %}
                                 <strong>Total:</strong>
-                                {% if venda.promocao %}
-                                    <span class="text-success">R$ {{ venda.valor_total|floatformat:2 }}</span>
+                                {% if venda.promocao_aplicada_na_venda %}
+                                    <span class="text-success">R$ {{ venda.valor_total_efetivo|floatformat:2 }}</span>
                                     <small class="text-muted">
                                         <del>R$ {{ venda.quantidade|mul:venda.preco_venda|floatformat:2 }}</del>
                                     </small>
                                 {% else %}
-                                    R$ {{ venda.valor_total|floatformat:2 }}
+                                    R$ {{ venda.valor_total_efetivo|floatformat:2 }}
                                 {% endif %}
                             </div>
                             <div class="ms-auto">
@@ -216,9 +236,15 @@
                                     <a href="{% url 'inventario:detalhe_venda' venda.id %}" class="btn btn-sm btn-info">
                                         <i class="bi bi-eye"></i>
                                     </a>
+                                    {% if venda.status != 'devolvida' %}
                                     <a href="{% url 'inventario:editar_venda' venda.id %}" class="btn btn-sm btn-primary">
                                         <i class="bi bi-pencil"></i>
                                     </a>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-primary" disabled>
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {% endif %}
                                     <a href="{% url 'inventario:excluir_venda' venda.id %}" class="btn btn-sm btn-danger">
                                         <i class="bi bi-trash"></i>
                                     </a>

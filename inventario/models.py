@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models import F, Sum
 import uuid
+from decimal import Decimal
 
 class Fornecedor(models.Model):
     nome = models.CharField('Nome', max_length=100)
@@ -125,44 +126,64 @@ class Venda(models.Model):
         ('retirada', 'Retirada'),
         ('loja', 'Loja'),
     )
+    STATUS_CHOICES = (
+        ('concluida', 'Concluída'),
+        ('devolvida', 'Devolvida'),
+    )
     
     produto = models.ForeignKey(Produto, on_delete=models.PROTECT, related_name='vendas')
     cliente_nome = models.CharField('Nome do Cliente', max_length=100)
     quantidade = models.PositiveIntegerField('Quantidade Vendida')
-    preco_venda = models.DecimalField('Preço de Venda', max_digits=10, decimal_places=2)
+    preco_venda = models.DecimalField('Preço de Venda Registrado (sem promoção)', max_digits=10, decimal_places=2)
     data = models.DateTimeField('Data da Venda', default=timezone.now)
     tipo_venda = models.CharField('Tipo de Venda', max_length=10, choices=TIPO_CHOICES, default='retirada')
-    promocao = models.ForeignKey(Promocao, on_delete=models.PROTECT, null=True, blank=True, related_name='vendas') # Alterado de SET_NULL para PROTECT
+    promocao = models.ForeignKey(Promocao, on_delete=models.PROTECT, null=True, blank=True, related_name='vendas')
+    status = models.CharField('Status da Venda', max_length=30, choices=STATUS_CHOICES, default='concluida')
     
     def __str__(self):
-        return f"{self.cliente_nome} - {self.produto.nome} ({self.data.strftime('%d/%m/%Y')})"
+        return f"{self.cliente_nome} - {self.produto.nome} ({self.data.strftime('%d/%m/%Y')}) - {self.get_status_display()}"
     
     class Meta:
         verbose_name = 'Venda'
         verbose_name_plural = 'Vendas'
         ordering = ['-data']
     
-    def preco_com_promocao(self):
-        """Retorna o preço unitário considerando a promoção, se houver"""
-        if self.promocao:
+    def promocao_aplicada_na_venda(self):
+        """Verifica se a promoção associada estava ativa na data da venda."""
+        if not self.promocao:
+            return False
+        
+        venda_data = self.data.date()
+        promocao_data_inicio = self.promocao.data_inicio.date()
+        promocao_data_fim = self.promocao.data_fim.date()
+
+        return (self.promocao.ativa and
+                promocao_data_inicio <= venda_data <= promocao_data_fim)
+
+    def preco_efetivo_pago(self):
+        """Retorna o preço unitário efetivamente pago, considerando a promoção na data da venda."""
+        if self.promocao_aplicada_na_venda():
             return self.promocao.preco_final(self.produto)
         return self.preco_venda
-    
-    def valor_total(self):
-        """Calcula o valor total da venda considerando possíveis promoções"""
-        return self.quantidade * self.preco_com_promocao()
-    
-    def valor_desconto(self):
-        """Calcula o valor do desconto obtido pela promoção"""
-        if self.promocao:
-            desconto = self.preco_venda - self.preco_com_promocao()
-            return self.quantidade * desconto
-        return 0
+
+    def valor_total_efetivo(self):
+        """Calcula o valor total efetivamente pago na venda."""
+        return self.quantidade * self.preco_efetivo_pago()
+
+    def valor_desconto_aplicado(self):
+        """Calcula o valor do desconto obtido pela promoção na data da venda."""
+        if self.promocao_aplicada_na_venda():
+            desconto_unitario = self.preco_venda - self.preco_efetivo_pago()
+            return self.quantidade * desconto_unitario
+        return Decimal('0')
     
     def lucro(self):
         """Calcula o lucro da venda, considerando o tipo de venda 'Loja'."""
+        if self.status == 'devolvida':
+            return Decimal('0')
+
         custo_total = self.quantidade * self.produto.preco_compra
-        lucro_bruto = self.valor_total() - custo_total
+        lucro_bruto = self.valor_total_efetivo() - custo_total
         
         if self.tipo_venda == 'loja':
             return lucro_bruto / 2
@@ -170,6 +191,9 @@ class Venda(models.Model):
     
     def margem_lucro(self):
         """Calcula a margem de lucro percentual da venda."""
+        if self.status == 'devolvida':
+            return Decimal('0')
+            
         custo_total = self.quantidade * self.produto.preco_compra
         if custo_total > 0:
             # O método self.lucro() já retorna o valor ajustado (dividido por 2 se for 'loja')
@@ -179,11 +203,11 @@ class Venda(models.Model):
     
     def save(self, *args, **kwargs):
         # Se for uma venda nova, atualiza o estoque
-        if not self.pk:
-            self.produto.quantidade -= self.quantidade
-            self.produto.save()
-        
+        is_new = not self.pk
         super().save(*args, **kwargs)
+        if is_new:
+            self.produto.quantidade -= self.quantidade
+            self.produto.save(update_fields=['quantidade'])
 
 class NotaFiscal(models.Model):
     METODO_PAGAMENTO_CHOICES = (
@@ -249,24 +273,39 @@ class Devolucao(models.Model):
     
     def save(self, *args, **kwargs):
         # Se o status mudou para aprovado ou concluído, atualiza o estoque
+        old_obj = None
         if self.pk:
-            old_obj = Devolucao.objects.get(pk=self.pk)
-            if old_obj.status not in ['aprovada', 'concluida'] and self.status in ['aprovada', 'concluida']:
-                # Se for devolução, retorna itens ao estoque
-                if self.tipo == 'devolucao':
-                    self.venda.produto.quantidade += self.quantidade
-                    self.venda.produto.save()
-                # Se for troca, diminui o estoque do produto de troca
-                elif self.tipo == 'troca' and self.produto_troca:
-                    # Adiciona o produto original de volta ao estoque
-                    self.venda.produto.quantidade += self.quantidade
-                    self.venda.produto.save()
-                    
-                    # Remove o produto de troca do estoque
-                    self.produto_troca.quantidade -= self.quantidade
-                    self.produto_troca.save()
-        
+            try:
+                old_obj = Devolucao.objects.get(pk=self.pk)
+            except Devolucao.DoesNotExist:
+                pass
+
         super().save(*args, **kwargs)
+
+        status_changed_to_approved_or_concluded = False
+        if old_obj and old_obj.status not in ['aprovada', 'concluida'] and self.status in ['aprovada', 'concluida']:
+            status_changed_to_approved_or_concluded = True
+        elif not old_obj and self.status in ['aprovada', 'concluida']:
+            status_changed_to_approved_or_concluded = True
+
+        if status_changed_to_approved_or_concluded:
+            # Atualiza o estoque
+            if self.tipo == 'devolucao':
+                self.venda.produto.quantidade = F('quantidade') + self.quantidade
+                self.venda.produto.save(update_fields=['quantidade'])
+            elif self.tipo == 'troca' and self.produto_troca:
+                # Adiciona o produto original de volta ao estoque
+                self.venda.produto.quantidade = F('quantidade') + self.quantidade
+                self.venda.produto.save(update_fields=['quantidade'])
+                
+                # Remove o produto de troca do estoque
+                self.produto_troca.quantidade = F('quantidade') - self.quantidade
+                self.produto_troca.save(update_fields=['quantidade'])
+            
+            # Atualiza o status da Venda relacionada
+            if self.venda.status != 'devolvida':
+                self.venda.status = 'devolvida'
+                self.venda.save(update_fields=['status'])
 
 class Configuracao(models.Model):
     nome_empresa = models.CharField('Nome da Empresa', max_length=100)

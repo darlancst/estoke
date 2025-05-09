@@ -11,7 +11,8 @@
         <a href="{% url 'inventario:lista_vendas' %}" class="btn btn-sm btn-secondary">
             <i class="bi bi-arrow-left"></i> Voltar
         </a>
-        {% if not has_nota and not devolucoes %}
+        {# Só permite editar se não estiver devolvida, não tiver nota e não tiver devoluções (a view já impede edição com devoluções) #}
+        {% if venda.status != 'devolvida' and not has_nota %} 
         <a href="{% url 'inventario:editar_venda' venda.id %}" class="btn btn-sm btn-primary">
             <i class="bi bi-pencil"></i> Editar
         </a>
@@ -21,9 +22,12 @@
             <i class="bi bi-receipt"></i> NF
         </a>
         {% endif %}
+         {# Só permite registrar devolução se a venda não estiver já marcada como devolvida #}
+        {% if venda.status != 'devolvida' %}
         <a href="{% url 'inventario:criar_devolucao' %}?venda={{ venda.id }}" class="btn btn-sm btn-warning">
             <i class="bi bi-arrow-return-left"></i> Devolução
         </a>
+        {% endif %}
     </div>
 </div>
 
@@ -31,7 +35,7 @@
     <a href="{% url 'inventario:lista_vendas' %}" class="btn btn-sm btn-secondary">
         <i class="bi bi-arrow-left"></i> Voltar para Lista
     </a>
-    {% if not has_nota and not devolucoes %}
+    {% if venda.status != 'devolvida' and not has_nota %}
     <a href="{% url 'inventario:editar_venda' venda.id %}" class="btn btn-sm btn-primary">
         <i class="bi bi-pencil"></i> Editar
     </a>
@@ -41,9 +45,11 @@
         <i class="bi bi-receipt"></i> Gerar Nota Fiscal
     </a>
     {% endif %}
+    {% if venda.status != 'devolvida' %}
     <a href="{% url 'inventario:criar_devolucao' %}?venda={{ venda.id }}" class="btn btn-sm btn-warning">
         <i class="bi bi-arrow-return-left"></i> Registrar Devolução
     </a>
+    {% endif %}
 </div>
 {% endblock %}
 
@@ -51,8 +57,8 @@
 <div class="row">
     <!-- Informações da Venda -->
     <div class="col-lg-8 col-md-12 mb-4">
-        <div class="card mb-4">
-            <div class="card-header">
+        <div class="card mb-4 {% if venda.status == 'devolvida' %}border-warning{% endif %}L"> {# ADICIONA CLASSE SE DEVOLVIDA #}
+            <div class="card-header {% if venda.status == 'devolvida' %}bg-warning-subtle{% endif %}L"> {# ADICIONA CLASSE SE DEVOLVIDA #}
                 <h5 class="card-title mb-0">Informações da Venda</h5>
             </div>
             <div class="card-body">
@@ -61,7 +67,14 @@
                         <h3 class="fs-4">Venda #{{ venda.id }}</h3>
                         <p class="text-muted mb-0">
                             <strong>Data:</strong> {{ venda.data|date:"d/m/Y H:i" }}<br>
-                            <strong>Tipo:</strong> {{ venda.get_tipo_venda_display }}
+                            <strong>Tipo:</strong> {{ venda.get_tipo_venda_display }}<br>
+                            <strong>Status:</strong> {# EXIBIÇÃO DO STATUS #}
+                            <span class="badge 
+                                {% if venda.status == 'concluida' %}bg-success{% endif %}
+                                {% if venda.status == 'devolvida' %}bg-warning text-dark{% endif %}
+                            ">
+                                {{ venda.get_status_display }}
+                            </span>
                         </p>
                     </div>
                     <div class="col-md-6 col-sm-12 text-md-end">
@@ -80,7 +93,7 @@
                                         <h5 class="card-title">Produto: <a href="{% url 'inventario:detalhe_produto' venda.produto.id %}">{{ venda.produto.nome }}</a></h5>
                                         <p class="text-muted mb-md-0">
                                             <strong>Fornecedor:</strong> 
-                                            <a href="{% url 'inventario:detalhe_fornecedor' venda.produto.fornecedor.id %}">{{ venda.produto.fornecedor.nome }}</a>
+                                            {{ venda.produto.fornecedor.nome }}
                                         </p>
                                     </div>
                                     <div class="col-md-4 col-sm-12 text-md-end">
@@ -93,13 +106,13 @@
                                         <div class="card bg-light h-100">
                                             <div class="card-body text-center">
                                                 <h6 class="card-title">Preço Unitário</h6>
-                                                {% if venda.promocao %}
-                                                    <h5 class="text-success">R$ {{ venda.preco_com_promocao|floatformat:2 }}</h5>
+                                                {% if venda.promocao_aplicada_na_venda %}
+                                                    <h5 class="text-success">R$ {{ venda.preco_efetivo_pago|floatformat:2 }}</h5>
                                                     <small class="text-muted">
                                                         <del>R$ {{ venda.preco_venda|floatformat:2 }}</del>
                                                     </small>
                                                 {% else %}
-                                                    <h5 class="text-primary">R$ {{ venda.preco_venda|floatformat:2 }}</h5>
+                                                    <h5 class="text-primary">R$ {{ venda.preco_efetivo_pago|floatformat:2 }}</h5>
                                                 {% endif %}
                                             </div>
                                         </div>
@@ -108,36 +121,41 @@
                                         <div class="card bg-light h-100">
                                             <div class="card-body text-center">
                                                 <h6 class="card-title">Valor Total</h6>
-                                                {% if venda.promocao %}
-                                                    <h5 class="text-success">R$ {{ venda.valor_total|floatformat:2 }}</h5>
+                                                {% if venda.promocao_aplicada_na_venda %}
+                                                    <h5 class="text-success">R$ {{ venda.valor_total_efetivo|floatformat:2 }}</h5>
                                                     <small class="text-muted">
                                                         <del>R$ {{ venda.quantidade|mul:venda.preco_venda|floatformat:2 }}</del>
                                                     </small>
                                                 {% else %}
-                                                    <h5 class="text-primary">R$ {{ venda.valor_total|floatformat:2 }}</h5>
+                                                    <h5 class="text-primary">R$ {{ venda.valor_total_efetivo|floatformat:2 }}</h5>
                                                 {% endif %}
                                             </div>
                                         </div>
                                     </div>
                                     <div class="col-sm-12 col-md-4">
-                                        <div class="card bg-success text-white h-100">
+                                        <div class="card {% if venda.status == 'devolvida' %}bg-secondary{% else %}bg-success{% endif %} text-white h-100"> {# AJUSTE NA COR DO CARD DE LUCRO #}
                                             <div class="card-body text-center">
                                                 <h6 class="card-title">Lucro</h6>
-                                                <h5>R$ {{ venda.lucro|floatformat:2 }}</h5>
-                                                <small>{{ venda.margem_lucro|floatformat:1 }}%</small>
+                                                <h5>R$ {{ venda.lucro|floatformat:2 }}</h5> {# Lucro já será 0 se devolvida, conforme model #}
+                                                {% if venda.status != 'devolvida' %}<small>{{ venda.margem_lucro|floatformat:1 }}%</small>{% endif %}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 
-                                {% if venda.promocao %}
+                                {% if venda.promocao_aplicada_na_venda %}
                                 <div class="alert alert-warning mt-3">
                                     <strong>Promoção aplicada:</strong> 
                                     <a href="{% url 'inventario:detalhe_promocao' venda.promocao.id %}">{{ venda.promocao.nome }}</a>
                                     {% if venda.promocao.percentual_desconto %}
                                         <span class="badge bg-danger float-end">-{{ venda.promocao.percentual_desconto }}%</span>
                                         <div class="mt-2">
-                                            <strong>Desconto aplicado:</strong> R$ {{ venda.valor_desconto|floatformat:2 }}
+                                            <strong>Desconto aplicado:</strong> R$ {{ venda.valor_desconto_aplicado|floatformat:2 }}
+                                        </div>
+                                    {% elif venda.promocao.preco_promocional %}
+                                        <span class="badge bg-info float-end">Preço Fixo: R$ {{ venda.promocao.preco_promocional|floatformat:2 }}</span>
+                                         <div class="mt-2">
+                                            <strong>Desconto aplicado:</strong> R$ {{ venda.valor_desconto_aplicado|floatformat:2 }}
                                         </div>
                                     {% endif %}
                                 </div>

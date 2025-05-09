@@ -85,10 +85,12 @@ def dashboard(request):
         lucro_total += venda.lucro()
     
     # Dados para o gráfico de receita e lucro
+    vendas_periodo_nao_devolvidas = vendas_periodo.exclude(status='devolvida')
+
     # Determina a agregação (diária ou mensal) com base na duração do período
     delta = data_fim - data_inicio
     if delta.days <= 60:  # Se o período for <= 60 dias, usamos agregação diária
-        vendas_por_dia = vendas_periodo.annotate(
+        vendas_por_dia = vendas_periodo_nao_devolvidas.annotate(
             dia=TruncDay('data')
         ).values('dia').annotate(
             receita=Sum(F('quantidade') * F('preco_venda'), output_field=DecimalField()),
@@ -99,7 +101,7 @@ def dashboard(request):
         receitas = [str(venda['receita'] or Decimal('0')) for venda in vendas_por_dia]
         lucros = [str((venda['receita'] or Decimal('0')) - (venda['custo'] or Decimal('0'))) for venda in vendas_por_dia]
     else:  # Para períodos maiores, usamos agregação mensal
-        vendas_por_mes = vendas_periodo.annotate(
+        vendas_por_mes = vendas_periodo_nao_devolvidas.annotate(
             mes=TruncMonth('data')
         ).values('mes').annotate(
             receita=Sum(F('quantidade') * F('preco_venda'), output_field=DecimalField()),

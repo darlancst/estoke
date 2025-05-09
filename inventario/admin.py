@@ -32,10 +32,11 @@ class PromocaoAdmin(admin.ModelAdmin):
 
 @admin.register(Venda)
 class VendaAdmin(admin.ModelAdmin):
-    list_display = ('cliente_nome', 'produto', 'quantidade', 'preco_venda', 'valor_total', 'data')
-    list_filter = ('tipo_venda', 'data')
+    list_display = ('cliente_nome', 'produto', 'quantidade', 'preco_venda', 'valor_total_efetivo', 'data', 'status')
+    list_filter = ('tipo_venda', 'data', 'status')
     search_fields = ('cliente_nome', 'produto__nome')
     date_hierarchy = 'data'
+    readonly_fields = ('promocao',)
 
 @admin.register(NotaFiscal)
 class NotaFiscalAdmin(admin.ModelAdmin):
