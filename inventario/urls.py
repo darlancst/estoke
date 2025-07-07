@@ -17,7 +17,6 @@ urlpatterns = [
     path('produtos/<int:pk>/', views.detalhe_produto, name='detalhe_produto'),
     path('produtos/<int:pk>/editar/', views.editar_produto, name='editar_produto'),
     path('produtos/<int:pk>/excluir/', views.excluir_produto, name='excluir_produto'),
-    path('produtos/<int:pk>/historico-precos/', views.historico_precos, name='historico_precos'),
     path('produtos/<int:pk>/adicionar-estoque/', views.adicionar_estoque, name='adicionar_estoque'),
     path('produtos/busca/', views.busca_produtos, name='busca_produtos'),
     

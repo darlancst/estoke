@@ -12,8 +12,8 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 
 from .models import (
-    Fornecedor, Produto, HistoricoPreco, Promocao, 
-    Venda, NotaFiscal, Devolucao, Configuracao
+    Fornecedor, Produto, Promocao, 
+    Venda, NotaFiscal, Devolucao, Configuracao, Lote
 )
 from .forms import (
     FornecedorForm, ProdutoForm, BuscaProdutoForm, PromocaoForm,
@@ -68,7 +68,9 @@ def dashboard(request):
     
     # Estatísticas gerais
     total_produtos = Produto.objects.count()
-    valor_total_estoque = Produto.objects.aggregate(
+    
+    # O cálculo do valor do estoque agora precisa iterar sobre os lotes
+    valor_total_estoque = Lote.objects.aggregate(
         total=Sum(F('quantidade') * F('preco_compra'), output_field=DecimalField())
     )['total'] or Decimal('0')
     
@@ -94,7 +96,7 @@ def dashboard(request):
             dia=TruncDay('data')
         ).values('dia').annotate(
             receita=Sum(F('quantidade') * F('preco_venda'), output_field=DecimalField()),
-            custo=Sum(F('quantidade') * F('produto__preco_compra'), output_field=DecimalField())
+            custo=Sum(F('quantidade') * F('preco_compra_registrado'), output_field=DecimalField())
         ).order_by('dia')
         
         labels = [venda['dia'].strftime('%d/%m/%Y') for venda in vendas_por_dia]
@@ -105,7 +107,7 @@ def dashboard(request):
             mes=TruncMonth('data')
         ).values('mes').annotate(
             receita=Sum(F('quantidade') * F('preco_venda'), output_field=DecimalField()),
-            custo=Sum(F('quantidade') * F('produto__preco_compra'), output_field=DecimalField())
+            custo=Sum(F('quantidade') * F('preco_compra_registrado'), output_field=DecimalField())
         ).order_by('mes')
         
         labels = [venda['mes'].strftime('%m/%Y') for venda in vendas_por_mes]
@@ -116,18 +118,18 @@ def dashboard(request):
     produtos_lucrativos = []
     
     # Agrupamos as vendas por produto e calculamos o lucro total
-    vendas_por_produto = vendas_periodo.values('produto').annotate(
+    vendas_por_produto = vendas_periodo.filter(
+        produto_nome_historico__isnull=False
+    ).values('produto_nome_historico').annotate(
         quantidade_total=Sum('quantidade'),
-        receita_total=Sum(F('quantidade') * F('preco_venda'), output_field=DecimalField())
+        receita_total=Sum(F('quantidade') * F('preco_venda'), output_field=DecimalField()),
+        custo_total=Sum(F('quantidade') * F('preco_compra_registrado'), output_field=DecimalField())
     ).order_by('-receita_total')[:10]
     
     for item in vendas_por_produto:
-        produto = Produto.objects.get(pk=item['produto'])
-        custo_total = item['quantidade_total'] * produto.preco_compra
-        lucro = item['receita_total'] - custo_total
-        
+        lucro = (item['receita_total'] or 0) - (item['custo_total'] or 0)
         produtos_lucrativos.append({
-            'nome': produto.nome,
+            'nome': item['produto_nome_historico'],
             'lucro': lucro,
             'quantidade': item['quantidade_total']
         })
@@ -137,7 +139,11 @@ def dashboard(request):
     
     # Produtos com estoque baixo
     limite_estoque = configuracao.limite_estoque_baixo
-    produtos_estoque_baixo = Produto.objects.filter(quantidade__lte=limite_estoque).order_by('quantidade')
+    # A lógica de estoque baixo agora precisa ser baseada na soma dos lotes por produto
+    produtos_estoque_baixo = [
+        p for p in Produto.objects.annotate(total_quantidade=Sum('lotes__quantidade'))
+        if p.total_quantidade is not None and p.total_quantidade <= limite_estoque
+    ]
     
     context = {
         'configuracao': configuracao,
@@ -222,7 +228,7 @@ def criar_produto(request):
 
 def detalhe_produto(request, pk):
     produto = get_object_or_404(Produto, pk=pk)
-    historico = produto.historico_precos.all()[:10]  # Últimos 10 registros
+    lotes = produto.lotes.order_by('-data_entrada')
     promocoes = produto.promocoes.filter(data_fim__gte=timezone.now())  # Promoções ativas ou futuras
     
     # Calcular preços promocionais para cada promoção
@@ -235,7 +241,7 @@ def detalhe_produto(request, pk):
     
     return render(request, 'inventario/produtos/detalhe.html', {
         'produto': produto,
-        'historico': historico,
+        'lotes': lotes,
         'promocoes': promocoes,
         'promocoes_com_precos': promocoes_com_precos
     })
@@ -260,44 +266,27 @@ def editar_produto(request, pk):
 
 def excluir_produto(request, pk):
     produto = get_object_or_404(Produto, pk=pk)
-    
     if request.method == 'POST':
+        # A lógica de proteção agora é tratada pelo SET_NULL, então podemos excluir
         produto.delete()
-        messages.success(request, 'Produto excluído com sucesso!')
+        messages.success(request, f'Produto "{produto.nome}" excluído com sucesso.')
         return redirect('inventario:lista_produtos')
     
     return render(request, 'inventario/produtos/confirmar_exclusao.html', {'produto': produto})
 
-def historico_precos(request, pk):
-    produto = get_object_or_404(Produto, pk=pk)
-    historico = produto.historico_precos.all()
-    
-    return render(request, 'inventario/produtos/historico_precos.html', {
-        'produto': produto,
-        'historico': historico
-    })
-
 def adicionar_estoque(request, pk):
     produto = get_object_or_404(Produto, pk=pk)
-    
     if request.method == 'POST':
         form = AdicionarEstoqueForm(request.POST)
         if form.is_valid():
-            quantidade = form.cleaned_data['quantidade']
-            observacao = form.cleaned_data['observacao']
-            
-            # Adicionar ao estoque
-            produto.quantidade += quantidade
-            produto.save()
-            
-            messages.success(
-                request, 
-                f'Adicionado {quantidade} item(s) ao estoque de {produto.nome}. Estoque atual: {produto.quantidade}'
-            )
-            return redirect('inventario:lista_produtos')
+            lote = form.save(commit=False)
+            lote.produto = produto
+            lote.save()
+            messages.success(request, f'Estoque adicionado ao produto "{produto.nome}" com sucesso.')
+            return redirect('inventario:detalhe_produto', pk=produto.pk)
     else:
         form = AdicionarEstoqueForm()
-    
+
     return render(request, 'inventario/produtos/adicionar_estoque.html', {
         'form': form,
         'produto': produto

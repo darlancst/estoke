@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
-    Fornecedor, Produto, HistoricoPreco, Promocao, 
-    Venda, NotaFiscal, Devolucao, Configuracao
+    Fornecedor, Produto, Promocao, 
+    Venda, NotaFiscal, Devolucao, Configuracao, Lote
 )
 
 @admin.register(Fornecedor)
@@ -9,19 +9,37 @@ class FornecedorAdmin(admin.ModelAdmin):
     list_display = ('nome', 'telefone', 'email')
     search_fields = ('nome', 'contato', 'email')
 
-class HistoricoPrecoInline(admin.TabularInline):
-    model = HistoricoPreco
-    extra = 0
-    readonly_fields = ('data',)
-    can_delete = False
+class LoteInline(admin.TabularInline):
+    model = Lote
+    extra = 1  # Permite adicionar um lote por vez
 
 @admin.register(Produto)
 class ProdutoAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'quantidade', 'preco_compra', 'preco_venda', 'margem_lucro', 'fornecedor')
-    list_filter = ('fornecedor',)
+    list_display = ('nome', 'quantidade', 'preco_compra', 'preco_venda', 'fornecedor')
+    list_filter = ('lotes__fornecedor',)
     search_fields = ('nome', 'descricao')
-    inlines = [HistoricoPrecoInline]
+    inlines = [LoteInline]
     readonly_fields = ('data_criacao', 'data_atualizacao')
+
+    def get_queryset(self, request):
+        # Otimiza as consultas para buscar os dados dos lotes
+        return super().get_queryset(request).prefetch_related('lotes__fornecedor')
+
+    def quantidade(self, obj):
+        return obj.quantidade
+    quantidade.short_description = 'Quantidade em Estoque'
+
+    def preco_compra(self, obj):
+        return obj.preco_compra
+    preco_compra.short_description = 'Preço de Compra (Lote Ativo)'
+    
+    def preco_venda(self, obj):
+        return obj.preco_venda
+    preco_venda.short_description = 'Preço de Venda (Lote Ativo)'
+
+    def fornecedor(self, obj):
+        return obj.fornecedor
+    fornecedor.short_description = 'Fornecedor (Lote Ativo)'
 
 @admin.register(Promocao)
 class PromocaoAdmin(admin.ModelAdmin):

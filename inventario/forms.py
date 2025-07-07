@@ -1,7 +1,7 @@
 from django import forms
 from .models import (
     Fornecedor, Produto, Promocao, Venda, 
-    NotaFiscal, Devolucao, Configuracao
+    NotaFiscal, Devolucao, Configuracao, Lote
 )
 from django.utils import timezone
 
@@ -17,7 +17,7 @@ class FornecedorForm(forms.ModelForm):
 class ProdutoForm(forms.ModelForm):
     class Meta:
         model = Produto
-        fields = ['nome', 'descricao', 'quantidade', 'preco_compra', 'preco_venda', 'fornecedor', 'imagem']
+        fields = ['nome', 'descricao', 'imagem']
         widgets = {
             'descricao': forms.Textarea(attrs={'rows': 3}),
         }
@@ -82,6 +82,18 @@ class PromocaoForm(forms.ModelForm):
             )
         
         return cleaned_data
+
+class LoteForm(forms.ModelForm):
+    class Meta:
+        model = Lote
+        fields = ['fornecedor', 'quantidade', 'preco_compra', 'preco_venda', 'data_entrada']
+        widgets = {
+            'data_entrada': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super(LoteForm, self).__init__(*args, **kwargs)
+        self.fields['data_entrada'].initial = timezone.now()
 
 class VendaForm(forms.ModelForm):
     class Meta:

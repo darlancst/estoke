@@ -24,27 +24,9 @@ class Fornecedor(models.Model):
         verbose_name_plural = 'Fornecedores'
         ordering = ['nome']
 
-class HistoricoPreco(models.Model):
-    produto = models.ForeignKey('Produto', on_delete=models.CASCADE, related_name='historico_precos')
-    preco_compra = models.DecimalField('Preço de Compra', max_digits=10, decimal_places=2)
-    preco_venda = models.DecimalField('Preço de Venda', max_digits=10, decimal_places=2)
-    data = models.DateTimeField('Data de Alteração', auto_now_add=True)
-    
-    def __str__(self):
-        return f"{self.produto.nome} - {self.data.strftime('%d/%m/%Y %H:%M')}"
-    
-    class Meta:
-        verbose_name = 'Histórico de Preço'
-        verbose_name_plural = 'Históricos de Preços'
-        ordering = ['-data']
-
 class Produto(models.Model):
     nome = models.CharField('Nome', max_length=100)
     descricao = models.TextField('Descrição', blank=True)
-    quantidade = models.PositiveIntegerField('Quantidade em Estoque', default=0)
-    preco_compra = models.DecimalField('Preço de Compra', max_digits=10, decimal_places=2)
-    preco_venda = models.DecimalField('Preço de Venda Sugerido', max_digits=10, decimal_places=2)
-    fornecedor = models.ForeignKey(Fornecedor, on_delete=models.CASCADE, related_name='produtos')
     data_criacao = models.DateTimeField('Data de Cadastro', auto_now_add=True)
     data_atualizacao = models.DateTimeField('Última Atualização', auto_now=True)
     imagem = models.ImageField('Imagem', upload_to='produtos/', blank=True, null=True)
@@ -56,35 +38,47 @@ class Produto(models.Model):
         verbose_name = 'Produto'
         verbose_name_plural = 'Produtos'
         ordering = ['nome']
+
+    @property
+    def quantidade(self):
+        """Retorna a quantidade total em estoque somando todos os lotes."""
+        return self.lotes.aggregate(total=Sum('quantidade'))['total'] or 0
+
+    @property
+    def lote_ativo(self):
+        """Retorna o lote mais antigo com estoque disponível."""
+        return self.lotes.filter(quantidade__gt=0).order_by('data_entrada').first()
+
+    @property
+    def preco_compra(self):
+        lote = self.lote_ativo
+        return lote.preco_compra if lote else None
+
+    @property
+    def preco_venda(self):
+        lote = self.lote_ativo
+        return lote.preco_venda if lote else None
     
-    def margem_lucro(self):
-        """Calcula a margem de lucro do produto"""
-        if self.preco_compra > 0:
-            return ((self.preco_venda - self.preco_compra) / self.preco_compra) * 100
-        return 0
-    
-    def save(self, *args, **kwargs):
-        # Verifica se é um produto novo ou se o preço foi alterado
-        if self.pk:
-            old_produto = Produto.objects.get(pk=self.pk)
-            if old_produto.preco_compra != self.preco_compra or old_produto.preco_venda != self.preco_venda:
-                # Cria um registro de histórico de preço
-                HistoricoPreco.objects.create(
-                    produto=self,
-                    preco_compra=self.preco_compra,
-                    preco_venda=self.preco_venda
-                )
-        else:
-            # Produto novo, salva primeiro para poder criar o histórico de preço
-            super().save(*args, **kwargs)
-            HistoricoPreco.objects.create(
-                produto=self,
-                preco_compra=self.preco_compra,
-                preco_venda=self.preco_venda
-            )
-            return
-        
-        super().save(*args, **kwargs)
+    @property
+    def fornecedor(self):
+         lote = self.lote_ativo
+         return lote.fornecedor if lote else None
+
+class Lote(models.Model):
+    produto = models.ForeignKey(Produto, on_delete=models.CASCADE, related_name='lotes')
+    fornecedor = models.ForeignKey(Fornecedor, on_delete=models.SET_NULL, null=True, blank=True, related_name='lotes')
+    quantidade = models.PositiveIntegerField('Quantidade')
+    preco_compra = models.DecimalField('Preço de Compra', max_digits=10, decimal_places=2)
+    preco_venda = models.DecimalField('Preço de Venda', max_digits=10, decimal_places=2)
+    data_entrada = models.DateTimeField('Data de Entrada', default=timezone.now)
+
+    class Meta:
+        verbose_name = 'Lote'
+        verbose_name_plural = 'Lotes'
+        ordering = ['data_entrada']
+
+    def __str__(self):
+        return f"Lote de {self.produto.nome} ({self.quantidade} un.)"
 
 class Promocao(models.Model):
     nome = models.CharField('Nome da Promoção', max_length=100)
@@ -131,17 +125,20 @@ class Venda(models.Model):
         ('devolvida', 'Devolvida'),
     )
     
-    produto = models.ForeignKey(Produto, on_delete=models.PROTECT, related_name='vendas')
+    produto = models.ForeignKey(Produto, on_delete=models.SET_NULL, null=True, blank=True, related_name='vendas')
+    produto_nome_historico = models.CharField('Nome do Produto no ato da venda', max_length=100, null=True, blank=True)
     cliente_nome = models.CharField('Nome do Cliente', max_length=100)
     quantidade = models.PositiveIntegerField('Quantidade Vendida')
     preco_venda = models.DecimalField('Preço de Venda Registrado (sem promoção)', max_digits=10, decimal_places=2)
+    preco_compra_registrado = models.DecimalField('Preço de Compra Registrado', max_digits=10, decimal_places=2, null=True, blank=True)
     data = models.DateTimeField('Data da Venda', default=timezone.now)
     tipo_venda = models.CharField('Tipo de Venda', max_length=10, choices=TIPO_CHOICES, default='retirada')
     promocao = models.ForeignKey(Promocao, on_delete=models.PROTECT, null=True, blank=True, related_name='vendas')
     status = models.CharField('Status da Venda', max_length=30, choices=STATUS_CHOICES, default='concluida')
     
     def __str__(self):
-        return f"{self.cliente_nome} - {self.produto.nome} ({self.data.strftime('%d/%m/%Y')}) - {self.get_status_display()}"
+        nome_produto = self.produto.nome if self.produto else self.produto_nome_historico
+        return f"{self.cliente_nome} - {nome_produto} ({self.data.strftime('%d/%m/%Y')}) - {self.get_status_display()}"
     
     class Meta:
         verbose_name = 'Venda'
@@ -162,7 +159,7 @@ class Venda(models.Model):
 
     def preco_efetivo_pago(self):
         """Retorna o preço unitário efetivamente pago, considerando a promoção na data da venda."""
-        if self.promocao_aplicada_na_venda():
+        if self.promocao_aplicada_na_venda() and self.produto:
             return self.promocao.preco_final(self.produto)
         return self.preco_venda
 
@@ -179,10 +176,10 @@ class Venda(models.Model):
     
     def lucro(self):
         """Calcula o lucro da venda, considerando o tipo de venda 'Loja'."""
-        if self.status == 'devolvida':
+        if self.status == 'devolvida' or not self.preco_compra_registrado:
             return Decimal('0')
 
-        custo_total = self.quantidade * self.produto.preco_compra
+        custo_total = self.quantidade * self.preco_compra_registrado
         lucro_bruto = self.valor_total_efetivo() - custo_total
         
         if self.tipo_venda == 'loja':
@@ -191,10 +188,10 @@ class Venda(models.Model):
     
     def margem_lucro(self):
         """Calcula a margem de lucro percentual da venda."""
-        if self.status == 'devolvida':
+        if self.status == 'devolvida' or not self.preco_compra_registrado:
             return Decimal('0')
             
-        custo_total = self.quantidade * self.produto.preco_compra
+        custo_total = self.quantidade * self.preco_compra_registrado
         if custo_total > 0:
             # O método self.lucro() já retorna o valor ajustado (dividido por 2 se for 'loja')
             margem = (self.lucro() / custo_total) * 100
@@ -202,12 +199,37 @@ class Venda(models.Model):
         return 0
     
     def save(self, *args, **kwargs):
-        # Se for uma venda nova, atualiza o estoque
         is_new = not self.pk
+        
+        # Validação e captura de dados históricos para novas vendas
+        if is_new and self.produto:
+            if self.quantidade > self.produto.quantidade:
+                raise ValueError(f"Estoque insuficiente para {self.produto.nome}. "
+                                 f"Disponível: {self.produto.quantidade}, Pedido: {self.quantidade}")
+
+            # Armazena dados históricos no momento da venda
+            self.produto_nome_historico = self.produto.nome
+            if not self.preco_venda:
+                self.preco_venda = self.produto.preco_venda
+            
+            # O custo é baseado no lote que será consumido
+            self.preco_compra_registrado = self.produto.preco_compra
+
         super().save(*args, **kwargs)
-        if is_new:
-            self.produto.quantidade -= self.quantidade
-            self.produto.save(update_fields=['quantidade'])
+
+        # Lógica de dedução do estoque para novas vendas
+        if is_new and self.produto:
+            quantidade_a_deduzir = self.quantidade
+            lotes_disponiveis = self.produto.lotes.filter(quantidade__gt=0).order_by('data_entrada')
+
+            for lote in lotes_disponiveis:
+                if quantidade_a_deduzir <= 0:
+                    break
+                
+                retirar = min(lote.quantidade, quantidade_a_deduzir)
+                lote.quantidade -= retirar
+                lote.save()
+                quantidade_a_deduzir -= retirar
 
 class NotaFiscal(models.Model):
     METODO_PAGAMENTO_CHOICES = (
@@ -291,17 +313,38 @@ class Devolucao(models.Model):
         if status_changed_to_approved_or_concluded:
             # Atualiza o estoque
             if self.tipo == 'devolucao':
-                self.venda.produto.quantidade = F('quantidade') + self.quantidade
-                self.venda.produto.save(update_fields=['quantidade'])
+                # Devoluções devem retornar para um lote. Qual? O mais novo? Ou um lote de "devolvidos"?
+                # Por simplicidade, vamos criar um novo lote para o item devolvido.
+                Lote.objects.create(
+                    produto=self.venda.produto,
+                    fornecedor=self.venda.produto.fornecedor, # Fornecedor do lote ativo no momento
+                    quantidade=self.quantidade,
+                    preco_compra=self.venda.preco_compra_registrado, # Custo da venda original
+                    preco_venda=self.venda.preco_venda, # Preço de venda original
+                    data_entrada=timezone.now()
+                )
             elif self.tipo == 'troca' and self.produto_troca:
-                # Adiciona o produto original de volta ao estoque
-                self.venda.produto.quantidade = F('quantidade') + self.quantidade
-                self.venda.produto.save(update_fields=['quantidade'])
+                # Adiciona o produto original de volta ao estoque (novo lote)
+                Lote.objects.create(
+                    produto=self.venda.produto,
+                    fornecedor=self.venda.produto.fornecedor,
+                    quantidade=self.quantidade,
+                    preco_compra=self.venda.preco_compra_registrado,
+                    preco_venda=self.venda.preco_venda,
+                    data_entrada=timezone.now()
+                )
                 
-                # Remove o produto de troca do estoque
-                self.produto_troca.quantidade = F('quantidade') - self.quantidade
-                self.produto_troca.save(update_fields=['quantidade'])
-            
+                # Remove o produto de troca do estoque (usando a mesma lógica FIFO da Venda)
+                quantidade_a_deduzir = self.quantidade
+                lotes_para_troca = self.produto_troca.lotes.filter(quantidade__gt=0).order_by('data_entrada')
+                for lote in lotes_para_troca:
+                    if quantidade_a_deduzir <= 0:
+                        break
+                    retirar = min(lote.quantidade, quantidade_a_deduzir)
+                    lote.quantidade -= retirar
+                    lote.save()
+                    quantidade_a_deduzir -= retirar
+
             # Atualiza o status da Venda relacionada
             if self.venda.status != 'devolvida':
                 self.venda.status = 'devolvida'
