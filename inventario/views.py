@@ -18,7 +18,7 @@ from .models import (
 from .forms import (
     FornecedorForm, ProdutoForm, BuscaProdutoForm, PromocaoForm,
     VendaForm, NotaFiscalForm, DevolucaoForm, ConfiguracaoForm,
-    PeriodoForm, BuscaVendaForm, AdicionarEstoqueForm
+    PeriodoForm, BuscaVendaForm, LoteForm
 )
 
 # Funções utilitárias
@@ -277,19 +277,20 @@ def excluir_produto(request, pk):
 def adicionar_estoque(request, pk):
     produto = get_object_or_404(Produto, pk=pk)
     if request.method == 'POST':
-        form = AdicionarEstoqueForm(request.POST)
+        form = LoteForm(request.POST)
         if form.is_valid():
             lote = form.save(commit=False)
             lote.produto = produto
             lote.save()
-            messages.success(request, f'Estoque adicionado ao produto "{produto.nome}" com sucesso.')
+            messages.success(request, f'Novo lote de estoque adicionado ao produto "{produto.nome}" com sucesso.')
             return redirect('inventario:detalhe_produto', pk=produto.pk)
     else:
-        form = AdicionarEstoqueForm()
+        form = LoteForm()
 
     return render(request, 'inventario/produtos/adicionar_estoque.html', {
         'form': form,
-        'produto': produto
+        'produto': produto,
+        'titulo': f'Adicionar Novo Lote para {produto.nome}'
     })
 
 # Views de Promoções

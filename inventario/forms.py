@@ -208,24 +208,4 @@ class PeriodoForm(forms.Form):
             if data_inicio and data_fim and data_inicio > data_fim:
                 raise forms.ValidationError("A data de início deve ser anterior à data de término.")
         
-        return cleaned_data
-
-class AdicionarEstoqueForm(forms.Form):
-    quantidade = forms.IntegerField(
-        label='Quantidade a adicionar',
-        min_value=1,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Quantidade'
-        })
-    )
-    
-    observacao = forms.CharField(
-        label='Observação',
-        required=False,
-        widget=forms.Textarea(attrs={
-            'class': 'form-control',
-            'rows': 2,
-            'placeholder': 'Observação (opcional)'
-        })
-    ) 
+        return cleaned_data 
